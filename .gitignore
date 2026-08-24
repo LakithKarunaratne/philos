@@ -37,6 +37,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# neon cli local workspace link
+.neon
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
