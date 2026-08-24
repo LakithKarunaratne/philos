@@ -28,39 +28,43 @@ When the user provides a Linear ticket ID, this skill will:
 Use Linear MCP to get ticket details and find the attached PR URL.
 
 ### 2. Switch to PR Branch
+Use the full PR URL from the ticket so checkout resolves against the right repository:
 ```bash
-gh pr checkout <PR_NUMBER>
+gh pr checkout "<PR_URL>"
 ```
+If only a bare PR number is available, pass `--repo <OWNER/REPO>` explicitly.
 
 ### 3. Fetch and Validate PR Comments
+The API returns 30 items per page by default — always paginate:
 ```bash
-gh api repos/:owner/:repo/pulls/<PR_NUMBER>/comments
-gh api repos/:owner/:repo/pulls/<PR_NUMBER>/reviews
+gh api "repos/{owner}/{repo}/pulls/<PR_NUMBER>/comments" --paginate --slurp
+gh api "repos/{owner}/{repo}/pulls/<PR_NUMBER>/reviews" --paginate --slurp
 ```
+`--slurp` wraps the pages in an outer JSON array — flatten it before processing. Keep `/reviews` records separate from review comments, and when replying only target top-level comments (skip entries where `in_reply_to_id` is non-null, since GitHub does not support replies to replies).
 
-Validate each comment:
-- Is it actionable? (specific code change requested)
+Validate each comment by judging the requested change, not the sentence form:
+- Is it actionable? (a specific code change can be derived from it, even if phrased as a question)
 - Is it still relevant? (code hasn't changed since comment)
-- Is it a valid suggestion? (not a question, not a nitpick without substance)
+- Is there substance? (supported by reasoning or evidence, not a bare style preference)
 
 ### 4. Handle Invalid Comments
 For invalid comments, reply with explanation:
 ```bash
-gh api repos/:owner/:repo/pulls/<PR_NUMBER>/comments/<COMMENT_ID>/replies -f body="This comment is invalid because: <reason>"
+gh api "repos/{owner}/{repo}/pulls/<PR_NUMBER>/comments/<COMMENT_ID>/replies" -f body="This comment is invalid because: <reason>"
 ```
 
 ### 5. Fix Valid Comments
 For each valid comment:
 - Make the necessary code changes
 - Test the changes
-- Reply to comment confirming fix:
+- Reply to comment confirming fix (do not cite a commit SHA — nothing is committed yet):
 ```bash
-gh api repos/:owner/:repo/pulls/<PR_NUMBER>/comments/<COMMENT_ID>/replies -f body="Fixed in <commit-sha>"
+gh api "repos/{owner}/{repo}/pulls/<PR_NUMBER>/comments/<COMMENT_ID>/replies" -f body="Fixed locally (not committed yet)"
 ```
 
 ### 6. Display Commit Message
 Show the commit message in this format (DO NOT COMMIT):
-```
+```text
 [Ticket ID] fixes: title
 - fix 1
 - fix 2
@@ -73,7 +77,7 @@ User: "fix PR comments for LINEAR-123"
 
 The skill will:
 1. Query Linear MCP for ticket LINEAR-123
-2. Find attached PR (e.g., #456)
+2. Find attached PR (e.g., https://github.com/OWNER/REPO/pull/456)
 3. Checkout PR branch
 4. Analyze all review comments
 5. Process each comment
