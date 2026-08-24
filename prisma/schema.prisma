@@ -1,0 +1,25 @@
+// Philos data model foundation (PHI-9).
+//
+// BaseFields convention — copy into EVERY model. All tables carry a UUID
+// primary key plus created/updated timestamps and a soft-delete marker.
+//
+// model Example {
+//   id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+//   createdAt DateTime  @default(now())
+//   updatedAt DateTime  @updatedAt
+//   deletedAt DateTime?
+//
+//   // ...model-specific fields below
+// }
+//
+// Soft deletes: never hard-delete rows; set deletedAt instead and filter
+// `where: { deletedAt: null }` at the query layer.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
