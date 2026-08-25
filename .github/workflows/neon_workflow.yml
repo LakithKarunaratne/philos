@@ -15,22 +15,11 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
 
 jobs:
-  setup:
-    name: Setup
-    outputs:
-      branch: ${{ steps.branch_name.outputs.current_branch }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Get branch name
-        id: branch_name
-        uses: tj-actions/branch-names@v8
-
   create_neon_branch:
     name: Create Neon Branch
     outputs:
       db_url: ${{ steps.create_neon_branch.outputs.db_url }}
       db_url_pooled: ${{ steps.create_neon_branch.outputs.db_url_pooled }}
-    needs: setup
     if: |
       github.event_name == 'pull_request'
       && github.event.pull_request.head.repo.full_name == github.repository
@@ -48,7 +37,10 @@ jobs:
         uses: neondatabase/create-branch-action@v6
         with:
           project_id: ${{ vars.NEON_PROJECT_ID }}
-          branch_name: preview/pr-${{ github.event.number }}-${{ needs.setup.outputs.branch }}
+          # PR number only: stable across head-branch renames, and no
+          # contributor-controlled branch name is interpolated by the action's
+          # shell commands (NEON_API_KEY is exposed in this step)
+          branch_name: preview/pr-${{ github.event.number }}
           api_key: ${{ secrets.NEON_API_KEY }}
           expires_at: ${{ env.EXPIRES_AT }}
       - name: Checkout repository
@@ -105,12 +97,11 @@ jobs:
 #        uses: neondatabase/schema-diff-action@v1
 #        with:
 #          project_id: ${{ vars.NEON_PROJECT_ID }}
-#          compare_branch: preview/pr-${{ github.event.number }}-${{ needs.setup.outputs.branch }}
+#          compare_branch: preview/pr-${{ github.event.number }}
 #          api_key: ${{ secrets.NEON_API_KEY }}
 
   delete_neon_branch:
     name: Delete Neon Branch
-    needs: setup
     if: |
       github.event_name == 'pull_request'
       && github.event.pull_request.head.repo.full_name == github.repository
@@ -121,5 +112,7 @@ jobs:
         uses: neondatabase/delete-branch-action@v3
         with:
           project_id: ${{ vars.NEON_PROJECT_ID }}
-          branch: preview/pr-${{ github.event.number }}-${{ needs.setup.outputs.branch }}
+          # must match the create job's branch_name (PR number only, so cleanup
+          # still targets the right branch even if the head branch is renamed)
+          branch: preview/pr-${{ github.event.number }}
           api_key: ${{ secrets.NEON_API_KEY }}
