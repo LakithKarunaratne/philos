@@ -8,6 +8,9 @@ on:
       - synchronize
       - closed
 
+permissions:
+  contents: read
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
 
@@ -50,6 +53,10 @@ jobs:
           expires_at: ${{ env.EXPIRES_AT }}
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          # nothing past this step touches git, so don't leave the job's
+          # GITHUB_TOKEN in .git/config where install scripts could read it
+          persist-credentials: false
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
