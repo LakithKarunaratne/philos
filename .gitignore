@@ -4,6 +4,7 @@
 /node_modules
 /.pnp
 .pnp.*
+/generated
 .yarn/*
 !.yarn/patches
 !.yarn/plugins
@@ -35,6 +36,9 @@ yarn-error.log*
 
 # vercel
 .vercel
+
+# neon cli local workspace link
+.neon
 
 # typescript
 *.tsbuildinfo
