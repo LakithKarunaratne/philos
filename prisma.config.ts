@@ -12,6 +12,6 @@ export default defineConfig({
     // breaks every prisma command — including `prisma generate`, which needs no
     // database at all and runs from postinstall on every `npm ci`. Migrate and
     // introspect still fail loudly when the URL is genuinely missing.
-    url: process.env.DATABASE_URL_UNPOOLED,
+    url: process.env.DATABASE_URL,
   },
 });
