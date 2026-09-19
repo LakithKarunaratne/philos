@@ -1,5 +1,7 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+[![DeepSource](https://app.deepsource.com/gh/LakithKarunaratne/philos.svg/?label=code+coverage&show_trend=false&token=2jCppPJRelz4s3qa0MwE91PH)](https://app.deepsource.com/gh/LakithKarunaratne/philos/)
+
 ## Getting Started
 
 First, run the development server:
