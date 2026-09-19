@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { ChevronRightIcon, PawPrintIcon, SearchIcon, TriangleAlertIcon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { DISPLAY_NAME, NEARBY_CASES } from "@/lib/mock-data"
 import { cn } from "cn"
@@ -50,14 +50,12 @@ export default function HomePage() {
               Volunteers within 3 km are needed for transport.
             </p>
           </div>
-          <Button
-            size="sm"
-            className="shrink-0"
-            nativeButton={false}
-            render={<Link href="/map" />}
+          <Link
+            href="/map"
+            className={cn(buttonVariants({ size: "sm" }), "shrink-0")}
           >
             View
-          </Button>
+          </Link>
         </div>
 
         <div className="grid grid-cols-3 gap-2">

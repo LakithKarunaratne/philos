@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import Link from "next/link"
 import { FilterIcon, SearchIcon, XIcon } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -181,23 +181,17 @@ export function RescueMap() {
           </CardContent>
           <CardFooter className="gap-3 border-0 bg-transparent">
             {selectedMeta.actions.includes("profile") ? (
-              <Button
-                variant="outline"
-                className="flex-1"
-                nativeButton={false}
-                render={<Link href="#" />}
+              <Link
+                href="#"
+                className={cn(buttonVariants({ variant: "outline" }), "flex-1")}
               >
                 View profile
-              </Button>
+              </Link>
             ) : null}
             {selectedMeta.actions.includes("respond") ? (
-              <Button
-                className="flex-1"
-                nativeButton={false}
-                render={<Link href="#" />}
-              >
+              <Link href="#" className={cn(buttonVariants(), "flex-1")}>
                 Respond
-              </Button>
+              </Link>
             ) : null}
           </CardFooter>
         </Card>
