@@ -1,5 +1,9 @@
 # Design
 
+## Layout
+
+Mobile first view with panes representing different purposes.
+
 ## Theme
 
 `happy-philo` is the theme name and the Design uses TweakCN theme at https://tweakcn.com/themes/cmu8o5zjc000304la0s2jevx0
