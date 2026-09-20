@@ -1,3 +1,5 @@
+import { ClerkProvider } from "@clerk/nextjs";
+import { shadcn } from "@clerk/ui/themes"
 import type { Metadata } from "next"
 import { Quicksand } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
@@ -23,9 +25,11 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${quicksand.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col font-sans">
-        {children}
-        <Analytics />
-        <SpeedInsights />
+        <ClerkProvider appearance={{ theme: shadcn }}>
+          {children}
+          <Analytics />
+          <SpeedInsights />
+        </ClerkProvider>
       </body>
     </html>
   )

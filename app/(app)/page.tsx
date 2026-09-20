@@ -3,8 +3,10 @@ import { ChevronRightIcon, PawPrintIcon, SearchIcon, TriangleAlertIcon } from "l
 import { Badge } from "@/components/ui/badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs"
 import { DISPLAY_NAME, NEARBY_CASES } from "@/lib/mock-data"
 import { cn } from "cn"
+import { Show } from "@clerk/nextjs"
 
 function salutation() {
   const hour = new Date().getHours()
@@ -29,6 +31,17 @@ export default function HomePage() {
           </span>
           <span className="text-lg font-bold tracking-tight">Philos</span>
         </div>
+        <Show when="signed-out">
+          <SignInButton mode="modal">
+            <Button variant="ghost" size="sm">Sign in</Button>
+          </SignInButton>
+          <SignUpButton mode="modal">
+            <Button size="sm">Sign up</Button>
+          </SignUpButton>
+        </Show>
+        <Show when="signed-in">
+          <UserButton />
+        </Show>
         <Button variant="outline" size="icon" aria-label="Search cases" className="rounded-full">
           <SearchIcon />
         </Button>
