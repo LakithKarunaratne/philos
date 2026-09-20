@@ -1,9 +1,10 @@
 import Link from "next/link"
-import { ChevronRightIcon, PawPrintIcon, SearchIcon, TriangleAlertIcon } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
+import { PawPrintIcon, SearchIcon, TriangleAlertIcon } from "lucide-react"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs"
+import { currentUser } from "@clerk/nextjs/server"
+import { CaseListRow } from "@/components/cases/case-list-row"
 import { DISPLAY_NAME, NEARBY_CASES } from "@/lib/mock-data"
 import { cn } from "cn"
 import { Show } from "@clerk/nextjs"
@@ -15,13 +16,17 @@ function salutation() {
   return "Good evening"
 }
 
-function statusVariant(status: string) {
-  if (status === "reported") return "destructive" as const
-  if (status === "foster") return "default" as const
-  return "secondary" as const
-}
+export default async function HomePage() {
+  let user = null
+  try {
+    user = await currentUser()
+  } catch {
+    // If Clerk is not configured or in offline mode, fall back to mock name
+    user = null
+  }
 
-export default function HomePage() {
+  const greetingName = user?.firstName || user?.username || DISPLAY_NAME
+
   return (
     <>
       <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-background px-4 py-3">
@@ -42,9 +47,13 @@ export default function HomePage() {
         <Show when="signed-in">
           <UserButton />
         </Show>
-        <Button variant="outline" size="icon" aria-label="Search cases" className="rounded-full">
-          <SearchIcon />
-        </Button>
+        <Link
+          href="/map"
+          className={cn(buttonVariants({ variant: "outline", size: "icon" }), "rounded-full")}
+          aria-label="Search cases on map"
+        >
+          <SearchIcon className="size-4" />
+        </Link>
       </header>
 
       <main className="flex flex-1 flex-col gap-5 px-4 py-5">
@@ -52,7 +61,7 @@ export default function HomePage() {
           <p className="text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">
             {salutation()}
           </p>
-          <h1 className="mt-1 text-xl font-bold tracking-tight">{DISPLAY_NAME}</h1>
+          <h1 className="mt-1 text-xl font-bold tracking-tight">{greetingName}</h1>
         </div>
 
         <div className="flex items-center gap-3 rounded-2xl bg-foreground px-4 py-3.5 text-background">
@@ -60,14 +69,14 @@ export default function HomePage() {
           <div className="min-w-0 flex-1">
             <p className="font-semibold">2 urgent cases nearby</p>
             <p className="text-sm text-background/75">
-              Volunteers within 3 km are needed for transport.
+              Volunteers in Colombo needed for emergency transport.
             </p>
           </div>
           <Link
-            href="/map"
+            href="/cases/bruno/respond"
             className={cn(buttonVariants({ size: "sm" }), "shrink-0")}
           >
-            View
+            Respond
           </Link>
         </div>
 
@@ -96,28 +105,13 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <Card className="gap-0 py-0">
+          <Card className="gap-0 py-0 overflow-hidden">
             {NEARBY_CASES.map((dog, index) => (
-              <Link
+              <CaseListRow
                 key={dog.id}
-                href="#"
-                className={cn(
-                  "flex items-center gap-3 px-4 py-3.5 text-inherit no-underline transition-colors hover:bg-muted/50",
-                  index < NEARBY_CASES.length - 1 && "border-b border-border"
-                )}
-              >
-                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground">
-                  <PawPrintIcon className="size-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-semibold">{dog.name}</span>
-                    <Badge variant={statusVariant(dog.status)}>{dog.statusLabel}</Badge>
-                  </div>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">{dog.detail}</p>
-                </div>
-                <ChevronRightIcon className="size-4.5 shrink-0 text-muted-foreground" />
-              </Link>
+                dog={dog}
+                isLast={index === NEARBY_CASES.length - 1}
+              />
             ))}
           </Card>
         </section>
