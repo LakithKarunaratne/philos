@@ -1,3 +1,5 @@
+import { CASE_STATUSES, FILTER_ALL, STATUS_META } from "@/lib/constants"
+
 export type CaseStatus =
   | "reported"
   | "rescued"
@@ -22,7 +24,6 @@ export type RescueCase = {
   lng: number
   distance: string
   urgent?: boolean
-  pinColor: string
   age?: string
   breed?: string
   gender?: "Male" | "Female"
@@ -35,8 +36,6 @@ export type RescueCase = {
   notes?: string
 }
 
-export const DISPLAY_NAME = "Alex"
-
 export const NEARBY_CASES: RescueCase[] = [
   {
     id: "bruno",
@@ -48,7 +47,6 @@ export const NEARBY_CASES: RescueCase[] = [
     lat: 6.9147,
     lng: 79.8528,
     distance: "0.4 km away",
-    pinColor: "#e5484d",
     urgent: true,
     age: "~2 years",
     breed: "Sri Lankan Street Dog (Hound mix)",
@@ -81,7 +79,6 @@ export const NEARBY_CASES: RescueCase[] = [
     lat: 6.892,
     lng: 79.856,
     distance: "1.8 km away",
-    pinColor: "#2e9d57",
     urgent: false,
     age: "~1 year",
     breed: "Indie Terrier mix",
@@ -113,7 +110,6 @@ export const NEARBY_CASES: RescueCase[] = [
     lat: 6.918,
     lng: 79.879,
     distance: "2.6 km away",
-    pinColor: "#9a5cf0",
     urgent: false,
     age: "~6 months",
     breed: "Puppy cross",
@@ -145,7 +141,6 @@ export const NEARBY_CASES: RescueCase[] = [
     lat: 6.923,
     lng: 79.851,
     distance: "1.1 km away",
-    pinColor: "#e67e22",
     urgent: false,
     age: "~3 years",
     breed: "Mixed breed",
@@ -173,7 +168,6 @@ export const NEARBY_CASES: RescueCase[] = [
     lat: 6.908,
     lng: 79.87,
     distance: "2.1 km away",
-    pinColor: "#796f91",
     urgent: false,
     age: "~4 years",
     breed: "Golden shepherd mix",
@@ -192,21 +186,9 @@ export const NEARBY_CASES: RescueCase[] = [
   },
 ]
 
-export const MAP_CASE_DETAILS: Record<
-  string,
-  { blurb: string; actions: ("profile" | "respond")[] }
-> = NEARBY_CASES.reduce((acc, c) => {
-  acc[c.id] = { blurb: c.blurb, actions: c.actions }
-  return acc
-}, {} as Record<string, { blurb: string; actions: ("profile" | "respond")[] }>)
-
-export const STATUS_FILTERS: { id: CaseStatus | "all"; label: string }[] = [
-  { id: "all", label: "All" },
-  { id: "reported", label: "Reported" },
-  { id: "rescued", label: "Rescued" },
-  { id: "vet", label: "Vet care" },
-  { id: "foster", label: "Foster" },
-  { id: "adopted", label: "Adopted" },
+export const STATUS_FILTERS: { id: CaseStatus | typeof FILTER_ALL; label: string }[] = [
+  { id: FILTER_ALL, label: "All" },
+  ...CASE_STATUSES.map((id) => ({ id, label: STATUS_META[id].label })),
 ]
 
 export type AlertCategory = "urgent" | "update" | "foster"

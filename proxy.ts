@@ -5,8 +5,10 @@ const isPublicRoute = createRouteMatcher([
   "/sign-up(.*)",
 ]);
 
+// Fail closed: every non-public route requires a session, even if Clerk keys
+// are missing (Clerk then errors instead of silently serving the app).
 export default clerkMiddleware(async (auth, req) => {
-  if (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && !isPublicRoute(req)) {
+  if (!isPublicRoute(req)) {
     await auth.protect();
   }
 });

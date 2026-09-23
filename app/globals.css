@@ -72,6 +72,11 @@
   --shadow-opacity: var(--shadow-opacity);
   --color-shadow-color: var(--shadow-color);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-status-reported: var(--status-reported);
+  --color-status-rescued: var(--status-rescued);
+  --color-status-vet: var(--status-vet);
+  --color-status-foster: var(--status-foster);
+  --color-status-adopted: var(--status-adopted);
 }
 
 :root {
@@ -128,6 +133,12 @@
   --shadow-xl: 0px 4px 12px 0px hsl(33.7500 27.5862% 22.7451% / 0.08), 0px 8px 10px -1px hsl(33.7500 27.5862% 22.7451% / 0.08);
   --shadow-2xl: 0px 4px 12px 0px hsl(33.7500 27.5862% 22.7451% / 0.20);
   --tracking-normal: 0em;
+  /* Rescue case status colours (badges, map legend, map pins) */
+  --status-reported: var(--destructive);
+  --status-rescued: var(--primary);
+  --status-vet: oklch(0.6162 0.2133 299.3420);
+  --status-foster: oklch(0.6172 0.1439 151.5432);
+  --status-adopted: oklch(0.5634 0.0530 298.1586);
 }
 
 .dark {
@@ -183,6 +194,11 @@
   --shadow-lg: 0px 8px 16px 0px hsl(0 0% 0% / 0.40), 0px 4px 6px -1px hsl(0 0% 0% / 0.40);
   --shadow-xl: 0px 8px 16px 0px hsl(0 0% 0% / 0.40), 0px 8px 10px -1px hsl(0 0% 0% / 0.40);
   --shadow-2xl: 0px 8px 16px 0px hsl(0 0% 0% / 1.00);
+  --status-reported: var(--destructive);
+  --status-rescued: var(--primary);
+  --status-vet: oklch(0.7359 0.1700 299.3420);
+  --status-foster: oklch(0.7459 0.1812 152.3266);
+  --status-adopted: oklch(0.7000 0.0530 298.1586);
 }
 
 @layer base {
@@ -195,5 +211,20 @@
   }
   html {
     @apply font-sans;
+  }
+}
+
+/* Pulsing halo behind the user's location pin on the Leaflet map. */
+@keyframes map-pulse {
+  75%,
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+@layer components {
+  .map-user-pulse {
+    animation: map-pulse 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
   }
 }
