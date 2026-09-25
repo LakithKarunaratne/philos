@@ -1,12 +1,17 @@
 import Link from "next/link"
-import { ChevronRightIcon, PawPrintIcon, SearchIcon, TriangleAlertIcon } from "lucide-react"
-import { Badge } from "@/components/ui/badge"
-import { Button, buttonVariants } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import { SignInButton, SignUpButton, UserButton } from "@clerk/nextjs"
-import { DISPLAY_NAME, NEARBY_CASES } from "@/lib/mock-data"
+import { PawPrintIcon, SearchIcon } from "lucide-react"
+import { UserButton } from "@clerk/nextjs"
+import { currentUser } from "@clerk/nextjs/server"
+import { buttonVariants } from "@/components/ui/button"
+import { Card } from "@/components/ui/card"
+import { CaseListRow } from "@/components/cases/case-list-row"
+import { StatsGrid } from "@/components/home/stats-grid"
+import { UrgentBanner } from "@/components/home/urgent-banner"
+import { NEARBY_CASES } from "@/lib/mock-data"
 import { cn } from "cn"
-import { Show } from "@clerk/nextjs"
+
+/** Shown when the signed-in user has no first name, username or email. */
+const FALLBACK_NAME = "there"
 
 function salutation() {
   const hour = new Date().getHours()
@@ -15,13 +20,11 @@ function salutation() {
   return "Good evening"
 }
 
-function statusVariant(status: string) {
-  if (status === "reported") return "destructive" as const
-  if (status === "foster") return "default" as const
-  return "secondary" as const
-}
+export default async function HomePage() {
+  const user = await currentUser()
+  const emailHandle = user?.primaryEmailAddress?.emailAddress.split("@")[0]
+  const greetingName = user?.firstName || user?.username || emailHandle || FALLBACK_NAME
 
-export default function HomePage() {
   return (
     <>
       <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border bg-background px-4 py-3">
@@ -31,20 +34,14 @@ export default function HomePage() {
           </span>
           <span className="text-lg font-bold tracking-tight">Philos</span>
         </div>
-        <Show when="signed-out">
-          <SignInButton mode="modal">
-            <Button variant="ghost" size="sm">Sign in</Button>
-          </SignInButton>
-          <SignUpButton mode="modal">
-            <Button size="sm">Sign up</Button>
-          </SignUpButton>
-        </Show>
-        <Show when="signed-in">
-          <UserButton />
-        </Show>
-        <Button variant="outline" size="icon" aria-label="Search cases" className="rounded-full">
-          <SearchIcon />
-        </Button>
+        <UserButton />
+        <Link
+          href="/map"
+          className={cn(buttonVariants({ variant: "outline", size: "icon" }), "rounded-full")}
+          aria-label="Search cases on map"
+        >
+          <SearchIcon className="size-4" />
+        </Link>
       </header>
 
       <main className="flex flex-1 flex-col gap-5 px-4 py-5">
@@ -52,41 +49,11 @@ export default function HomePage() {
           <p className="text-xs font-semibold tracking-[0.08em] text-muted-foreground uppercase">
             {salutation()}
           </p>
-          <h1 className="mt-1 text-xl font-bold tracking-tight">{DISPLAY_NAME}</h1>
+          <h1 className="mt-1 text-xl font-bold tracking-tight">{greetingName}</h1>
         </div>
 
-        <div className="flex items-center gap-3 rounded-2xl bg-foreground px-4 py-3.5 text-background">
-          <TriangleAlertIcon className="size-6 shrink-0 text-primary" />
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold">2 urgent cases nearby</p>
-            <p className="text-sm text-background/75">
-              Volunteers within 3 km are needed for transport.
-            </p>
-          </div>
-          <Link
-            href="/map"
-            className={cn(buttonVariants({ size: "sm" }), "shrink-0")}
-          >
-            View
-          </Link>
-        </div>
-
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            { num: "14", label: "Active cases" },
-            { num: "6", label: "In foster care" },
-            { num: "31", label: "Adopted this year" },
-          ].map((stat) => (
-            <Card key={stat.label} size="sm" className="items-center py-3 text-center">
-              <CardContent className="px-2">
-                <div className="text-xl font-bold">{stat.num}</div>
-                <div className="mt-0.5 text-[10px] font-semibold tracking-wide text-muted-foreground uppercase">
-                  {stat.label}
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <UrgentBanner />
+        <StatsGrid />
 
         <section>
           <div className="mb-3 flex items-baseline justify-between">
@@ -96,28 +63,9 @@ export default function HomePage() {
             </Link>
           </div>
 
-          <Card className="gap-0 py-0">
+          <Card className="gap-0 py-0 overflow-hidden">
             {NEARBY_CASES.map((dog, index) => (
-              <Link
-                key={dog.id}
-                href="#"
-                className={cn(
-                  "flex items-center gap-3 px-4 py-3.5 text-inherit no-underline transition-colors hover:bg-muted/50",
-                  index < NEARBY_CASES.length - 1 && "border-b border-border"
-                )}
-              >
-                <span className="grid size-11 shrink-0 place-items-center rounded-full bg-accent text-accent-foreground">
-                  <PawPrintIcon className="size-5" />
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-semibold">{dog.name}</span>
-                    <Badge variant={statusVariant(dog.status)}>{dog.statusLabel}</Badge>
-                  </div>
-                  <p className="mt-0.5 truncate text-xs text-muted-foreground">{dog.detail}</p>
-                </div>
-                <ChevronRightIcon className="size-4.5 shrink-0 text-muted-foreground" />
-              </Link>
+              <CaseListRow key={dog.id} dog={dog} isLast={index === NEARBY_CASES.length - 1} />
             ))}
           </Card>
         </section>
