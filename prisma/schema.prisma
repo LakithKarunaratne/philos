@@ -201,6 +201,7 @@ model CasePhoto {
   sortOrder  Int     @default(0) @map("sort_order")
 
   @@index([caseId, sortOrder])
+  @@index([deletedAt])
   @@map("case_photos")
 }
 
@@ -225,6 +226,7 @@ model CaseStatusEvent {
   actor   User?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([caseId, occurredAt])
+  @@index([deletedAt])
   @@map("case_status_events")
 }
 
@@ -245,6 +247,7 @@ model HealthRecord {
   recordedBy String?  @map("recorded_by")
 
   @@index([caseId, recordedAt])
+  @@index([deletedAt])
   @@map("health_records")
 }
 
@@ -271,6 +274,7 @@ model CaseResponse {
   arrivedAt DateTime? @map("arrived_at")
 
   @@index([caseId, createdAt])
+  @@index([deletedAt])
   @@map("case_responses")
 }
 
@@ -296,6 +300,7 @@ model CaseInterest {
   note  String?
 
   @@index([caseId, status])
+  @@index([deletedAt])
   @@map("case_interests")
 }
 
@@ -329,6 +334,7 @@ model Alert {
 
   @@index([category, publishedAt])
   @@index([publishedAt])
+  @@index([deletedAt])
   @@map("alerts")
 }
 
@@ -348,6 +354,7 @@ model AlertRead {
 
   @@unique([alertId, userId])
   @@index([userId])
+  @@index([deletedAt])
   @@map("alert_reads")
 }
 
@@ -370,5 +377,6 @@ model Contribution {
   occurredAt DateTime         @default(now()) @map("occurred_at")
 
   @@index([userId, occurredAt])
+  @@index([deletedAt])
   @@map("contributions")
 }

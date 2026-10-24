@@ -3,7 +3,10 @@
 // Mirrors the fixture cases the prototype screens render from `lib/mock-data`
 // so the app can be pointed at a real database without the UI changing shape.
 // Safe to re-run: every row is upserted under a deterministic id derived from
-// a stable key, so a second run updates rather than duplicates.
+// a stable key, so a second run updates in place rather than duplicating.
+// Timestamps are deliberately relative to the run (see `daysAgo`), so a re-run
+// also refreshes them — that keeps "reported 40 min ago" true for the urgent
+// fixtures instead of letting them age into staleness.
 
 import { createHash } from "node:crypto";
 
@@ -37,11 +40,17 @@ function seedId(key: string): string {
   ].join("-");
 }
 
-/** Days before now, as a Date — keeps the fixtures relative to the run. */
-function daysAgo(days: number, hour = 9): Date {
+/**
+ * Days before now, as a Date — keeps the fixtures relative to the run.
+ *
+ * `minute` separates entries that fall on the same day: several status events
+ * can share a `daysAgo`, and the tracker orders by `occurredAt`, so without it
+ * their order would be arbitrary.
+ */
+function daysAgo(days: number, hour = 9, minute = 0): Date {
   const date = new Date();
   date.setDate(date.getDate() - days);
-  date.setHours(hour, 0, 0, 0);
+  date.setHours(hour, minute, 0, 0);
   return date;
 }
 
@@ -79,6 +88,12 @@ const USERS = [
   },
 ] as const;
 
+type SeedUserKey = (typeof USERS)[number]["key"];
+
+/** Status events are attributed to the dispatch desk unless they are the
+ *  initial report, which belongs to whoever reported the case. */
+const DISPATCH_USER_KEY: SeedUserKey = "dispatch";
+
 type SeedCase = {
   slug: string;
   name: string;
@@ -95,10 +110,10 @@ type SeedCase = {
   temperament: string[];
   conditions: string[];
   notes: string;
-  reporterKey: string;
+  reporterKey: SeedUserKey;
   reporterPhone: string;
   photos: { storageKey: string; alt: string }[];
-  health: { note: string; vaccine?: string; daysAgo: number }[];
+  health: { note: string; vaccine?: string; recordedBy: string; daysAgo: number }[];
   timeline: { status: CaseStatus; label?: string; note?: string; daysAgo: number }[];
 };
 
@@ -124,9 +139,17 @@ const CASES: SeedCase[] = [
     reporterPhone: "+94 77 123 4567",
     photos: [{ storageKey: "seed/bruno-1.jpg", alt: "Bruno resting near a bus stand" }],
     health: [
-      { note: "Limping on front-left paw, possible strain or fracture", daysAgo: 0 },
-      { note: "Dehydrated and exhausted", daysAgo: 0 },
-      { note: "Needs transport to Riverside Clinic immediately", daysAgo: 0 },
+      {
+        note: "Limping on front-left paw, possible strain or fracture",
+        recordedBy: "Volunteer on scene",
+        daysAgo: 0,
+      },
+      { note: "Dehydrated and exhausted", recordedBy: "Volunteer on scene", daysAgo: 0 },
+      {
+        note: "Needs transport to Riverside Clinic immediately",
+        recordedBy: "Colombo Dispatch",
+        daysAgo: 0,
+      },
     ],
     timeline: [
       { status: CaseStatus.REPORTED, daysAgo: 0 },
@@ -159,9 +182,18 @@ const CASES: SeedCase[] = [
     reporterPhone: "+94 71 987 6543",
     photos: [{ storageKey: "seed/milo-1.jpg", alt: "Milo playing in a foster home garden" }],
     health: [
-      { note: "Vaccinated (DHPP & Rabies)", vaccine: "DHPP + Rabies", daysAgo: 45 },
-      { note: "Neutered last week, incision fully healed", daysAgo: 7 },
-      { note: "Cleared for permanent adoption", daysAgo: 2 },
+      {
+        note: "Vaccinated (DHPP & Rabies)",
+        vaccine: "DHPP + Rabies",
+        recordedBy: "Dr. Perera",
+        daysAgo: 45,
+      },
+      {
+        note: "Neutered last week, incision fully healed",
+        recordedBy: "Dr. Perera",
+        daysAgo: 7,
+      },
+      { note: "Cleared for permanent adoption", recordedBy: "Dr. Perera", daysAgo: 2 },
     ],
     timeline: [
       { status: CaseStatus.REPORTED, daysAgo: 52 },
@@ -190,9 +222,17 @@ const CASES: SeedCase[] = [
     reporterPhone: "+94 77 123 4567",
     photos: [{ storageKey: "seed/coco-1.jpg", alt: "Coco resting at Riverside Clinic" }],
     health: [
-      { note: "Mange treatment round 2 in progress", daysAgo: 3 },
-      { note: "Receiving high-protein recovery diet", daysAgo: 3 },
-      { note: "Next vet review in 4 days", daysAgo: 1 },
+      {
+        note: "Mange treatment round 2 in progress",
+        recordedBy: "Riverside Clinic",
+        daysAgo: 3,
+      },
+      {
+        note: "Receiving high-protein recovery diet",
+        recordedBy: "Riverside Clinic",
+        daysAgo: 3,
+      },
+      { note: "Next vet review in 4 days", recordedBy: "Riverside Clinic", daysAgo: 1 },
     ],
     timeline: [
       { status: CaseStatus.REPORTED, daysAgo: 12 },
@@ -220,8 +260,16 @@ const CASES: SeedCase[] = [
     reporterPhone: "+94 11 234 5678",
     photos: [{ storageKey: "seed/bella-1.jpg", alt: "Bella at the Colombo holding shelter" }],
     health: [
-      { note: "Underwent health check, no major injuries", daysAgo: 0 },
-      { note: "Scheduled for vaccination tomorrow", daysAgo: 0 },
+      {
+        note: "Underwent health check, no major injuries",
+        recordedBy: "Colombo Holding Shelter",
+        daysAgo: 0,
+      },
+      {
+        note: "Scheduled for vaccination tomorrow",
+        recordedBy: "Colombo Holding Shelter",
+        daysAgo: 0,
+      },
     ],
     timeline: [
       { status: CaseStatus.REPORTED, daysAgo: 1 },
@@ -251,9 +299,10 @@ const CASES: SeedCase[] = [
       {
         note: "Fully vaccinated, microchipped, spayed",
         vaccine: "DHPP + Rabies",
+        recordedBy: "Riverside Clinic",
         daysAgo: 60,
       },
-      { note: "Excellent dental health", daysAgo: 30 },
+      { note: "Excellent dental health", recordedBy: "Riverside Clinic", daysAgo: 30 },
     ],
     timeline: [
       { status: CaseStatus.REPORTED, daysAgo: 70 },
@@ -316,7 +365,7 @@ const ALERTS = [
 const CONTRIBUTIONS = [
   {
     key: "c-1",
-    userKey: "alex",
+    userKey: "alex" as SeedUserKey,
     caseSlug: "bruno",
     kind: ContributionKind.TRANSPORT,
     title: "Transport for Bruno",
@@ -418,8 +467,8 @@ async function main() {
           caseId: id,
           note: record.note,
           vaccine: record.vaccine ?? null,
-          recordedAt: daysAgo(record.daysAgo, 11),
-          recordedBy: "Riverside Clinic",
+          recordedAt: daysAgo(record.daysAgo, 11, index),
+          recordedBy: record.recordedBy,
           deletedAt: null,
         };
         await prisma.healthRecord.upsert({
@@ -436,8 +485,12 @@ async function main() {
           status: event.status,
           label: event.label ?? null,
           note: event.note ?? null,
-          occurredAt: daysAgo(event.daysAgo, 10),
-          actorId: seedId("user:dispatch"),
+          occurredAt: daysAgo(event.daysAgo, 10, index),
+          actorId: seedId(
+            `user:${
+              event.status === CaseStatus.REPORTED ? seedCase.reporterKey : DISPATCH_USER_KEY
+            }`
+          ),
           deletedAt: null,
         };
         await prisma.caseStatusEvent.upsert({
@@ -501,6 +554,7 @@ async function main() {
 }
 
 main().catch((error: unknown) => {
-  console.error(error);
+  const detail = error instanceof Error ? (error.stack ?? error.message) : String(error);
+  process.stderr.write(`Seed failed: ${detail}\n`);
   process.exitCode = 1;
 });
