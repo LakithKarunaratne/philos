@@ -6,6 +6,11 @@ config({ path: ".env" });
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
+  migrations: {
+    // Run after `prisma migrate dev` / `prisma migrate reset`, and on demand
+    // via `npm run db:seed`. The script is idempotent.
+    seed: "tsx prisma/seed.ts",
+  },
   datasource: {
     // Read straight from process.env rather than Prisma's `env()` helper: that
     // helper resolves eagerly while the config file loads, so an unset var
