@@ -23,3 +23,352 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/// Roles from PHI-7. Everyone who signs up starts as REPORTER; dispatch and
+/// admin actions are gated on DISPATCHER/ADMIN.
+enum UserRole {
+  REPORTER
+  VOLUNTEER
+  FOSTER
+  DISPATCHER
+  ADMIN
+}
+
+/// The five rescue stages the profile tracker renders, in order.
+enum CaseStatus {
+  REPORTED
+  RESCUED
+  VET
+  FOSTER
+  ADOPTED
+}
+
+enum DogGender {
+  MALE
+  FEMALE
+  UNKNOWN
+}
+
+enum AlertCategory {
+  URGENT
+  UPDATE
+  FOSTER
+}
+
+/// What a volunteer offers on `/cases/[id]/respond`.
+enum HelpType {
+  TRANSPORT
+  FIRST_AID
+  FOSTER_HOLD
+  SUPPLIES
+}
+
+enum InterestKind {
+  FOSTER
+  ADOPTION
+}
+
+enum InterestStatus {
+  PENDING
+  CONTACTED
+  APPROVED
+  DECLINED
+}
+
+/// Kinds of entry in a volunteer's contributions log.
+enum ContributionKind {
+  TRANSPORT
+  FEEDING
+  FOSTER_CHECK_IN
+  VET_VISIT
+  SHELTER
+  OTHER
+}
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+/// Local mirror of a Clerk user. Clerk owns credentials and profile; this row
+/// exists so cases, responses and contributions have something to point at.
+model User {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  clerkId     String    @unique @map("clerk_id")
+  username    String    @unique
+  displayName String?   @map("display_name")
+  email       String?   @unique
+  phone       String?
+  role        UserRole  @default(REPORTER)
+
+  reportedCases  RescueCase[]      @relation("CaseReporter")
+  statusEvents   CaseStatusEvent[]
+  responses      CaseResponse[]
+  interests      CaseInterest[]
+  contributions  Contribution[]
+  alertReads     AlertRead[]
+
+  @@index([deletedAt])
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Cases
+// ---------------------------------------------------------------------------
+
+/// One reported dog, from first sighting through adoption.
+model RescueCase {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  /// Readable URL segment — `/cases/bruno`. Unique so routes stay stable.
+  slug   String     @unique
+  name   String
+  status CaseStatus @default(REPORTED)
+
+  /// Free-text qualifier shown next to the status badge ("Injured", "Ready to
+  /// adopt"). Null falls back to the status's own label.
+  statusNote String? @map("status_note")
+
+  /// One-line summary for list rows and map cards.
+  summary String
+
+  locationName String  @map("location_name")
+  lat          Float
+  lng          Float
+
+  /// Urgent cases surface in the emergency queue and trigger URGENT alerts.
+  urgent Boolean @default(false)
+
+  ageLabel String?   @map("age_label")
+  breed    String?
+  gender   DogGender @default(UNKNOWN)
+
+  /// Short temperament tags rendered as chips on the profile.
+  temperament String[] @default([])
+
+  /// Condition chips picked on the report form.
+  conditions String[] @default([])
+
+  /// Reporter's free-text notes from the report form.
+  notes String?
+
+  reportedById String? @map("reported_by_id") @db.Uuid
+  reportedBy   User?   @relation("CaseReporter", fields: [reportedById], references: [id], onDelete: SetNull)
+
+  /// Reporter contact for the emergency queue's "Call reporter" action. Kept on
+  /// the case because reports may come from users we have no account for.
+  reporterPhone String? @map("reporter_phone")
+
+  photos        CasePhoto[]
+  statusEvents  CaseStatusEvent[]
+  healthRecords HealthRecord[]
+  responses     CaseResponse[]
+  interests     CaseInterest[]
+  alerts        Alert[]
+  contributions Contribution[]
+
+  @@index([status])
+  @@index([urgent])
+  @@index([lat, lng])
+  @@index([deletedAt])
+  @@map("rescue_cases")
+}
+
+/// An uploaded photo. `storageKey` is the object key in the S3-compatible
+/// bucket (PHI-6); `url` is the last public/CDN URL we resolved for it.
+model CasePhoto {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  caseId String     @map("case_id") @db.Uuid
+  case   RescueCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  storageKey String  @map("storage_key")
+  url        String?
+  alt        String?
+  sortOrder  Int     @default(0) @map("sort_order")
+
+  @@index([caseId, sortOrder])
+  @@map("case_photos")
+}
+
+/// Append-only status history. The profile tracker derives its completed /
+/// current / pending stages from these rows rather than storing them.
+model CaseStatusEvent {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  caseId String     @map("case_id") @db.Uuid
+  case   RescueCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  status     CaseStatus
+  /// Overrides the status's default tracker label ("Volunteer Transport").
+  label      String?
+  note       String?
+  occurredAt DateTime   @default(now()) @map("occurred_at")
+
+  actorId String? @map("actor_id") @db.Uuid
+  actor   User?   @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([caseId, occurredAt])
+  @@map("case_status_events")
+}
+
+/// Health and vaccination log entries shown on the dog profile (PHI-4).
+model HealthRecord {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  caseId String     @map("case_id") @db.Uuid
+  case   RescueCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  note       String
+  /// Set for vaccination entries so the profile can list them separately.
+  vaccine    String?
+  recordedAt DateTime @default(now()) @map("recorded_at")
+  recordedBy String?  @map("recorded_by")
+
+  @@index([caseId, recordedAt])
+  @@map("health_records")
+}
+
+/// A volunteer offering help on an urgent case (PHI-3).
+model CaseResponse {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  caseId String     @map("case_id") @db.Uuid
+  case   RescueCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  volunteerId String? @map("volunteer_id") @db.Uuid
+  volunteer   User?   @relation(fields: [volunteerId], references: [id], onDelete: SetNull)
+
+  helpType HelpType
+  /// Volunteer's own estimate, stored in minutes so the queue can sort on it.
+  etaMinutes Int?   @map("eta_minutes")
+  phone      String
+  note       String?
+
+  /// Set once the volunteer confirms they reached the dog.
+  arrivedAt DateTime? @map("arrived_at")
+
+  @@index([caseId, createdAt])
+  @@map("case_responses")
+}
+
+/// Foster or adoption interest submitted from the dog profile (PHI-4).
+model CaseInterest {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  caseId String     @map("case_id") @db.Uuid
+  case   RescueCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  /// Null when someone submits interest without an account.
+  userId String? @map("user_id") @db.Uuid
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  kind   InterestKind   @default(FOSTER)
+  status InterestStatus @default(PENDING)
+
+  name  String
+  phone String
+  note  String?
+
+  @@index([caseId, status])
+  @@map("case_interests")
+}
+
+// ---------------------------------------------------------------------------
+// Alerts & activity
+// ---------------------------------------------------------------------------
+
+/// An entry in the alerts feed. Read state is per-user, so it lives in
+/// AlertRead rather than on the alert itself.
+model Alert {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  title       String
+  description String
+  category    AlertCategory
+
+  caseId String?     @map("case_id") @db.Uuid
+  case   RescueCase? @relation(fields: [caseId], references: [id], onDelete: Cascade)
+
+  /// In-app destination; defaults to the linked case when null.
+  link String?
+
+  /// When the alert should appear in the feed — may trail createdAt for
+  /// scheduled or backfilled alerts.
+  publishedAt DateTime @default(now()) @map("published_at")
+
+  reads AlertRead[]
+
+  @@index([category, publishedAt])
+  @@index([publishedAt])
+  @@map("alerts")
+}
+
+model AlertRead {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  alertId String @map("alert_id") @db.Uuid
+  alert   Alert  @relation(fields: [alertId], references: [id], onDelete: Cascade)
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  readAt DateTime @default(now()) @map("read_at")
+
+  @@unique([alertId, userId])
+  @@index([userId])
+  @@map("alert_reads")
+}
+
+/// A volunteer's logged activity, listed in Settings → Contributions.
+model Contribution {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  userId String @map("user_id") @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  caseId String?     @map("case_id") @db.Uuid
+  case   RescueCase? @relation(fields: [caseId], references: [id], onDelete: SetNull)
+
+  kind       ContributionKind @default(OTHER)
+  title      String
+  detail     String?
+  occurredAt DateTime         @default(now()) @map("occurred_at")
+
+  @@index([userId, occurredAt])
+  @@map("contributions")
+}
