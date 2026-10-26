@@ -8,6 +8,7 @@ import {
   roleFromMetadata,
   softDeleteClerkUser,
   syncClerkUser,
+  uniqueUsername,
   type ClerkUserPayload,
 } from "@/lib/user-sync"
 
@@ -180,6 +181,47 @@ describe("syncClerkUser", () => {
     expect(mockUpsert).toHaveBeenCalledTimes(2)
     expect(mockUpsert.mock.calls[0][0].create.username).toBe("ada")
     expect(mockUpsert.mock.calls[1][0].create.username).toBe(fallbackUsername(CLERK_ID))
+  })
+
+  it("falls through to a suffixed handle when the id-derived one is taken too", async () => {
+    // Clerk handles are user-chosen, so someone can claim the id-derived name
+    // before its owner first syncs. Without this the upsert would throw, the
+    // webhook would 500, and Clerk would retry it forever.
+    mockUpsert.mockRejectedValueOnce(uniqueViolation()).mockRejectedValueOnce(uniqueViolation())
+
+    await expect(syncClerkUser(clerkUser())).resolves.toBe("db-user-1")
+
+    expect(mockUpsert).toHaveBeenCalledTimes(3)
+    const last = mockUpsert.mock.calls[2][0].create.username as string
+    expect(last).toMatch(new RegExp(`^${fallbackUsername(CLERK_ID)}_[0-9a-f]{8}$`))
+  })
+
+  it("retries a user with no Clerk handle whose derived name is taken", async () => {
+    // This path skipped the collision handling entirely before — the first
+    // write was not wrapped, so a taken name threw straight out.
+    mockUpsert.mockRejectedValueOnce(uniqueViolation())
+
+    await expect(syncClerkUser(clerkUser({ username: null }))).resolves.toBe("db-user-1")
+
+    expect(mockUpsert).toHaveBeenCalledTimes(2)
+    expect(mockUpsert.mock.calls[0][0].create.username).toBe(fallbackUsername(CLERK_ID))
+    expect(mockUpsert.mock.calls[1][0].create.username).toMatch(
+      new RegExp(`^${fallbackUsername(CLERK_ID)}_`)
+    )
+  })
+
+  it("gives up when even the suffixed handle collides", async () => {
+    mockUpsert.mockRejectedValue(uniqueViolation())
+
+    await expect(syncClerkUser(clerkUser())).rejects.toMatchObject({ code: "P2002" })
+    expect(mockUpsert).toHaveBeenCalledTimes(3)
+  })
+
+  it("mints a fresh suffix each time, so a retry does not collide again", () => {
+    expect(uniqueUsername(CLERK_ID)).not.toBe(uniqueUsername(CLERK_ID))
+    expect(uniqueUsername(CLERK_ID)).toMatch(
+      new RegExp(`^${fallbackUsername(CLERK_ID)}_[0-9a-f]{8}$`)
+    )
   })
 
   it("rethrows a failure that is not a unique violation", async () => {

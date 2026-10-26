@@ -86,11 +86,24 @@ export function displayNameOf(user: ClerkUserPayload): string | null {
 
 /**
  * `username` is unique and required, so a user who never set one in Clerk still
- * needs a value. The Clerk id is unique, which makes this collision-proof, and
- * deterministic, so retries land on the same name.
+ * needs a value. Derived from the Clerk id, and deterministic, so a retried
+ * delivery lands on the same name instead of minting a new one.
+ *
+ * Not collision-proof on its own: Clerk handles are user-chosen, so someone can
+ * claim this exact string before its owner first syncs. `uniqueUsername` is the
+ * fallback for that.
  */
 export function fallbackUsername(clerkId: string): string {
   return `user_${clerkId.slice(-12)}`
+}
+
+/**
+ * Last resort when both the claimed handle and the id-derived one are taken.
+ * Random rather than deterministic, so a retry after a collision gets a fresh
+ * name rather than colliding again.
+ */
+export function uniqueUsername(clerkId: string): string {
+  return `${fallbackUsername(clerkId)}_${crypto.randomUUID().slice(0, 8)}`
 }
 
 /**
@@ -120,20 +133,27 @@ export async function syncClerkUser(user: ClerkUserPayload): Promise<string> {
       select: { id: true },
     })
 
-  const claimed = user.username?.trim()
-  if (!claimed) return (await write(fallbackUsername(user.id))).id
+  // Tried in order, falling through on a unique violation. `username` is only
+  // a display detail, so a taken handle must never cost us the sync — an
+  // uncaught collision here would 500 the webhook and Clerk would retry it
+  // forever, leaving that user permanently unmirrored.
+  const candidates = [
+    user.username?.trim(),
+    fallbackUsername(user.id),
+    uniqueUsername(user.id),
+  ].filter((candidate): candidate is string => Boolean(candidate))
 
-  try {
-    return (await write(claimed)).id
-  } catch (error) {
-    // A soft-deleted row can still hold the handle this user just claimed —
-    // the unique index spans deleted rows too. Fall back rather than lose the
-    // sync over a display detail.
-    if (isUniqueViolation(error)) {
-      return (await write(fallbackUsername(user.id))).id
+  for (const [index, candidate] of candidates.entries()) {
+    const isLast = index === candidates.length - 1
+    try {
+      return (await write(candidate)).id
+    } catch (error) {
+      if (isLast || !isUniqueViolation(error)) throw error
     }
-    throw error
   }
+
+  // `candidates` always holds at least the two derived names.
+  throw new Error("No username candidate was attempted")
 }
 
 /**
