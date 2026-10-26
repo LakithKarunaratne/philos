@@ -31,7 +31,7 @@ Theme source of truth remains [`app/globals.css`](../app/globals.css) + [`DESIGN
 ## Non-goals
 
 - Neon/Prisma case persistence
-- Real geolocation / Mapbox / Google Maps
+- Real geolocation / Mapbox / Google Maps (use Leaflet.js with hardcoded Colombo, Sri Lanka locations instead)
 - Stripe donate / real payments
 - Full social OAuth UX polish (Google/Apple can remain Clerk-ready stubs or deferred; primary path is username/password)
 - Volunteer task board (intentionally removed from Home)
@@ -137,13 +137,15 @@ Theme source of truth remains [`app/globals.css`](../app/globals.css) + [`DESIGN
 
 **Do:**
 
+- Replace placeholder grid with **Leaflet.js**; center on **Colombo, Sri Lanka** with hardcoded dog/pin locations.
 - Persist selected filters in `sessionStorage` for the tab session.
 - Empty state when filters hide all pins.
 - Ensure floating card clears when filters hide the selected pin.
+- Tapping the search control expands an inline search box.
 - Optional: list mode toggle deferred unless needed; map-only remains default.
 - Legend stays compact; avoid overlapping the filter FAB and detail card.
 
-**Done when:** Filter edge cases feel intentional, not broken.
+**Done when:** Map renders with Leaflet.js over hardcoded Colombo locations; filters and search expansion behave correctly.
 
 ### 8. Settings hardening (Clerk-aware)
 
@@ -225,7 +227,7 @@ flowchart LR
 | `app/(app)/settings/page.tsx` | Clerk-aware fields + sign-out |
 | `components/ui/*` | Add dialog / textarea via shadcn as needed |
 | `README.md` | Philos app + Clerk setup |
-| `package.json` | `@clerk/nextjs` dependency |
+| `package.json` | `@clerk/nextjs`, `leaflet`, `@types/leaflet` dependencies |
 
 ## Acceptance checklist
 
@@ -236,7 +238,9 @@ flowchart LR
 - [ ] Report and Alerts are no longer stubs  
 - [ ] Home nearby cases and Map “View profile” open `/cases/[id]`  
 - [ ] Respond path works from urgent banner and Map card  
+- [ ] Map uses Leaflet.js with hardcoded Colombo, Sri Lanka locations  
 - [ ] Map filters handle empty + deselect correctly  
+- [ ] Tapping search expands an inline search box  
 - [ ] Settings actions show confirmations; password reset uses Clerk when wired  
 - [ ] Visual language still matches happy-philo tokens (no new purple/glow theme drift)  
 - [ ] Mobile viewport: bottom nav never covers primary CTAs; auth screens have no bottom nav  
