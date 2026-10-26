@@ -11,7 +11,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet"
-import { STATUS_FILTERS } from "@/lib/mock-data"
+import { STATUS_FILTERS } from "@/lib/constants"
 import type { StatusFilterId } from "@/components/map/use-status-filters"
 
 interface StatusFilterSheetProps {

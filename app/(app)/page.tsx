@@ -7,8 +7,11 @@ import { Card } from "@/components/ui/card"
 import { CaseListRow } from "@/components/cases/case-list-row"
 import { StatsGrid } from "@/components/home/stats-grid"
 import { UrgentBanner } from "@/components/home/urgent-banner"
-import { NEARBY_CASES } from "@/lib/mock-data"
+import { getCaseStats, getUrgentSummary, listCases } from "@/lib/queries/cases"
 import { cn } from "cn"
+
+// The database is not reachable at build time, so never prerender this page.
+export const dynamic = "force-dynamic"
 
 /** Shown when the signed-in user has no first name, username or email. */
 const FALLBACK_NAME = "there"
@@ -21,7 +24,12 @@ function salutation() {
 }
 
 export default async function HomePage() {
-  const user = await currentUser()
+  const [user, cases, stats, urgent] = await Promise.all([
+    currentUser(),
+    listCases(),
+    getCaseStats(),
+    getUrgentSummary(),
+  ])
   const emailHandle = user?.primaryEmailAddress?.emailAddress.split("@")[0]
   const greetingName = user?.firstName || user?.username || emailHandle || FALLBACK_NAME
 
@@ -52,8 +60,8 @@ export default async function HomePage() {
           <h1 className="mt-1 text-xl font-bold tracking-tight">{greetingName}</h1>
         </div>
 
-        <UrgentBanner />
-        <StatsGrid />
+        <UrgentBanner urgent={urgent} />
+        <StatsGrid stats={stats} />
 
         <section>
           <div className="mb-3 flex items-baseline justify-between">
@@ -64,9 +72,18 @@ export default async function HomePage() {
           </div>
 
           <Card className="gap-0 py-0 overflow-hidden">
-            {NEARBY_CASES.map((dog, index) => (
-              <CaseListRow key={dog.id} dog={dog} isLast={index === NEARBY_CASES.length - 1} />
-            ))}
+            {cases.length === 0 ? (
+              <div className="flex flex-col items-center gap-1 p-6 text-center">
+                <p className="text-sm font-semibold">No cases nearby</p>
+                <p className="text-xs text-muted-foreground">
+                  New rescue reports will appear here as they come in.
+                </p>
+              </div>
+            ) : (
+              cases.map((dog, index) => (
+                <CaseListRow key={dog.id} dog={dog} isLast={index === cases.length - 1} />
+              ))
+            )}
           </Card>
         </section>
       </main>

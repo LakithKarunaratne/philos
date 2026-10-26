@@ -1,7 +1,7 @@
 import { render, screen } from "@testing-library/react"
 import { StatusBadge } from "@/components/cases/status-badge"
 import { CaseListRow } from "@/components/cases/case-list-row"
-import { NEARBY_CASES } from "@/lib/mock-data"
+import { CASE_SUMMARY_FIXTURE } from "@/lib/__fixtures__/view-fixtures"
 
 describe("Cases UI Components", () => {
   it("renders StatusBadge with appropriate label and style", () => {
@@ -16,7 +16,7 @@ describe("Cases UI Components", () => {
   })
 
   it("renders CaseListRow with dog details and link", () => {
-    const dog = NEARBY_CASES[0]
+    const dog = CASE_SUMMARY_FIXTURE
     render(<CaseListRow dog={dog} />)
 
     expect(screen.getByText(dog.name)).toBeInTheDocument()

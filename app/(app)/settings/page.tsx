@@ -4,8 +4,16 @@ import { DonationSection } from "@/components/settings/donation-section"
 import { EmailSection } from "@/components/settings/email-section"
 import { PasswordSection } from "@/components/settings/password-section"
 import { SignOutButton } from "@/components/settings/sign-out-button"
+import { getCurrentDbUserId } from "@/lib/auth"
+import { listContributions } from "@/lib/queries/contributions"
 
-export default function SettingsPage() {
+// Reads the DB per request; it is not reachable at build time.
+export const dynamic = "force-dynamic"
+
+export default async function SettingsPage() {
+  const userId = await getCurrentDbUserId()
+  const contributions = userId ? await listContributions(userId) : []
+
   return (
     <>
       <header className="sticky top-0 z-20 border-b border-border bg-background px-4 py-3">
@@ -17,7 +25,7 @@ export default function SettingsPage() {
         <EmailSection />
         <PasswordSection />
         <ConnectedAccountsSection />
-        <ContributionsSection />
+        <ContributionsSection contributions={contributions} />
         <DonationSection />
         <SignOutButton />
       </main>

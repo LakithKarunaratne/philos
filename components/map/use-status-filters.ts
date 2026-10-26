@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useSyncExternalStore } from "react"
 import { FILTER_ALL } from "@/lib/constants"
-import type { CaseStatus } from "@/lib/mock-data"
+import type { CaseStatus } from "@/lib/view-types"
 
 export type StatusFilterId = CaseStatus | typeof FILTER_ALL
 

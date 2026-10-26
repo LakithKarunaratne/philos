@@ -1,57 +1,42 @@
 "use client"
 
 import { useState } from "react"
-import { HeartIcon, UserCheckIcon } from "lucide-react"
+import { HeartIcon } from "lucide-react"
 import { FosterInterestForm } from "@/components/cases/foster-interest-form"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
-import { useFosterForm } from "@/hooks/use-foster-form"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 
 interface FosterInterestDialogProps {
+  caseSlug: string
   caseName: string
 }
 
-export function FosterInterestDialog({ caseName }: FosterInterestDialogProps) {
+export function FosterInterestDialog({ caseSlug, caseName }: FosterInterestDialogProps) {
   const [open, setOpen] = useState(false)
-  const form = useFosterForm()
+  // Action state lives inside the form, so a fresh key is what resets it back
+  // to a blank form after a successful submit.
+  const [formKey, setFormKey] = useState(0)
+
+  function closeAndReset() {
+    setOpen(false)
+    setFormKey((key) => key + 1)
+  }
 
   return (
     <>
-      <Button
-        variant="outline"
-        className="flex-1 gap-1.5"
-        onClick={() => {
-          form.reopen()
-          setOpen(true)
-        }}
-      >
+      <Button variant="outline" className="flex-1 gap-1.5" onClick={() => setOpen(true)}>
         <HeartIcon className="size-4 text-primary" />
         Foster / Adopt
       </Button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : closeAndReset())}>
         <DialogContent>
-          {form.submitted ? (
-            <div className="flex flex-col items-center gap-3 py-4 text-center">
-              <span className="grid size-12 place-items-center rounded-full bg-primary/20 text-primary">
-                <UserCheckIcon className="size-6" />
-              </span>
-              <DialogTitle>Interest Registered!</DialogTitle>
-              <DialogDescription className="max-w-xs">
-                Thank you! Our volunteer coordinator in Colombo will reach out to you within 24 hours to coordinate care for {caseName}.
-              </DialogDescription>
-              <Button className="mt-2 w-full" onClick={() => setOpen(false)}>
-                Done
-              </Button>
-            </div>
-          ) : (
-            <FosterInterestForm
-              caseName={caseName}
-              values={form.values}
-              onFieldChange={form.setField}
-              onSubmit={form.submit}
-            />
-          )}
+          <FosterInterestForm
+            key={formKey}
+            caseSlug={caseSlug}
+            caseName={caseName}
+            onDone={closeAndReset}
+          />
         </DialogContent>
       </Dialog>
     </>

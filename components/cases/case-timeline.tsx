@@ -1,6 +1,6 @@
 import { CheckCircle2Icon, CircleDotIcon, CircleIcon } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { TimelineStep } from "@/lib/mock-data"
+import type { TimelineStep } from "@/lib/view-types"
 import { cn } from "cn"
 
 function StepIcon({ status }: { status: TimelineStep["status"] }) {

@@ -1,16 +1,16 @@
 import { Card, CardContent } from "@/components/ui/card"
+import type { CaseStats } from "@/lib/view-types"
 
-// Prototype figures until case counts come from the backend.
-const HOME_STATS = [
-  { num: "14", label: "Active cases" },
-  { num: "6", label: "In foster care" },
-  { num: "31", label: "Adopted this year" },
-]
+export function StatsGrid({ stats }: { stats: CaseStats }) {
+  const items = [
+    { num: stats.active, label: "Active cases" },
+    { num: stats.inFoster, label: "In foster care" },
+    { num: stats.adoptedThisYear, label: "Adopted this year" },
+  ]
 
-export function StatsGrid() {
   return (
     <div className="grid grid-cols-3 gap-2">
-      {HOME_STATS.map((stat) => (
+      {items.map((stat) => (
         <Card key={stat.label} size="sm" className="items-center py-3 text-center">
           <CardContent className="px-2">
             <div className="text-xl font-bold">{stat.num}</div>

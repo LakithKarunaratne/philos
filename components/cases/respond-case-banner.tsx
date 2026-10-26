@@ -1,8 +1,8 @@
 import { MapPinIcon, ShieldAlertIcon } from "lucide-react"
-import type { RescueCase } from "@/lib/mock-data"
+import type { CaseSummary } from "@/lib/view-types"
 
 interface RespondCaseBannerProps {
-  dog: Pick<RescueCase, "name" | "blurb" | "locationName">
+  dog: Pick<CaseSummary, "name" | "blurb" | "locationName">
 }
 
 export function RespondCaseBanner({ dog }: RespondCaseBannerProps) {

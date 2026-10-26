@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import type { RescueCase } from "@/lib/mock-data"
+import type { RescueCase } from "@/lib/view-types"
 
 export function CaseNotesCard({ name, notes }: { name: string; notes?: string }) {
   if (!notes) return null

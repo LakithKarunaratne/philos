@@ -11,10 +11,15 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { INITIAL_CONTRIBUTIONS, type ContributionItem } from "@/lib/mock-data"
+import type { ContributionItem } from "@/lib/view-types"
 
-export function ContributionsSection() {
-  const [contributions, setContributions] = useState<ContributionItem[]>(INITIAL_CONTRIBUTIONS)
+export function ContributionsSection({
+  contributions: initialContributions,
+}: {
+  contributions: ContributionItem[]
+}) {
+  // Seeded once on purpose: Clear only hides the list, so later server data is not re-synced.
+  const [contributions, setContributions] = useState<ContributionItem[]>(initialContributions)
 
   return (
     <Card>

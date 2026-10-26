@@ -35,7 +35,7 @@ Copy `.env.example` to `.env.local`:
 cp .env.example .env.local
 ```
 
-Fill in your Clerk API credentials:
+Fill in your Clerk API credentials and your Neon connection string:
 
 ```bash
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
@@ -45,12 +45,43 @@ NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
 NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/
 NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/
+
+DATABASE_URL=postgresql://user:password@ep-...-pooler.us-east-2.aws.neon.tech/philos?sslmode=require
 ```
 
-### 2. Install Dependencies & Start Dev Server
+Create a Postgres project at [neon.com](https://neon.com), then copy the **pooled** connection string (the host contains `-pooler`) from the **Connect** dialog on the project dashboard into `DATABASE_URL`.
+
+### 2. Install Dependencies
 
 ```bash
 npm install
+```
+
+The `postinstall` hook runs `prisma generate`, so the Prisma client is ready after a fresh install. It is written to `generated/`, which is gitignored.
+
+### 3. Database Setup
+
+The app reads everything from Postgres through Prisma (`prisma/schema.prisma`). There is no fixture fallback, so an unseeded database renders empty screens rather than demo dogs.
+
+```bash
+# Apply migrations (interactive, for local development)
+npm run db:migrate
+
+# Load the development fixtures (users, cases, photos, health records, status events, alerts and contributions)
+npm run db:seed
+```
+
+- `npm run db:migrate` runs `prisma migrate dev`: it applies pending migrations, creates a new one if the schema changed, and regenerates the client.
+- `npm run db:deploy` runs `prisma migrate deploy`: it applies pending migrations without prompting, so use it in CI and production.
+- `npm run db:seed` is idempotent. Every row has a deterministic id, so re-running it updates the fixtures in place instead of duplicating them.
+- `npm run db:studio` opens Prisma Studio to browse the data.
+- `npm run db:generate` regenerates the client on demand (for example after editing `prisma/schema.prisma`).
+
+Prisma commands read `DATABASE_URL` from `.env.local`, then `.env`.
+
+### 4. Start Dev Server
+
+```bash
 npm run dev
 ```
 

@@ -1,6 +1,6 @@
 import { Badge } from "@/components/ui/badge"
 import { STATUS_META } from "@/lib/constants"
-import type { CaseStatus } from "@/lib/mock-data"
+import type { CaseStatus } from "@/lib/view-types"
 import { cn } from "cn"
 
 interface StatusBadgeProps {
