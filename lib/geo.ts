@@ -2,7 +2,12 @@
 // browser's real position, distances are measured from a fixed Colombo origin
 // so server-rendered values stay stable between requests.
 
-/** Stand-in for the signed-in user's position (Colombo 03). */
+/**
+ * Stand-in for the signed-in user's position (Colombo 03).
+ *
+ * TODO(PHI-8): replace with the browser's real position. Every distance label
+ * in the app is measured from here, so this is the single place to change.
+ */
 export const USER_ORIGIN: [number, number] = [6.911, 79.858]
 
 /** Where the rescue map opens. */

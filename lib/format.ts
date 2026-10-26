@@ -6,15 +6,20 @@ const MINUTE_MS = 60 * 1000
 const HOUR_MS = 60 * MINUTE_MS
 const DAY_MS = 24 * HOUR_MS
 
-// en-US so the output matches the app's existing copy ("4:30 PM", "Sep 14")
-// rather than the en-GB forms ("4:30 pm", "14 Sept").
-const TIME_FORMAT = new Intl.DateTimeFormat("en-US", {
+/**
+ * The one locale every date helper formats in. en-US matches the app's
+ * existing copy ("4:30 PM", "Sep 14") rather than the en-GB forms ("4:30 pm",
+ * "14 Sept"). Swap this single constant when the app grows real i18n.
+ */
+const LOCALE = "en-US"
+
+const TIME_FORMAT = new Intl.DateTimeFormat(LOCALE, {
   hour: "numeric",
   minute: "2-digit",
   hour12: true,
 })
 
-const DATE_FORMAT = new Intl.DateTimeFormat("en-US", {
+const DATE_FORMAT = new Intl.DateTimeFormat(LOCALE, {
   month: "short",
   day: "numeric",
 })
