@@ -96,6 +96,10 @@ const SENSITIVE_KEY_EXACT = new Set([
 const MAX_DEPTH = 4
 const MAX_ARRAY_ITEMS = 20
 const MAX_STRING_LENGTH = 512
+// Error messages get a larger budget than an ordinary string: Prisma prints the
+// whole argument object before the line that says what was actually wrong, so a
+// 512-char cut throws away the diagnostic and keeps the noise.
+const MAX_ERROR_MESSAGE_LENGTH = 2000
 const MAX_STACK_LENGTH = 1000
 
 /** Lower-cased and stripped of separators, so `API_KEY` and `apiKey` match alike. */
@@ -114,21 +118,73 @@ function truncate(value: string, maxLength: number): string {
 
 type SerialisedError = { type: string; message: string; stack?: string }
 
+// An error message can embed the values that caused it, so scrubbing by key
+// name is not enough on its own. Two shapes leak personal data in practice:
+//
+//   PrismaClientValidationError — dumps the whole argument object into its
+//   message, so one wrong-typed field prints every other field beside it:
+//     `data: { name: "Ada Lovelace", phone: "0400 000 000", … }`
+//
+//   Postgres constraint violations — carry the offending value in the detail:
+//     `Key (phone)=(0400 000 000) already exists.`
+//
+// Both are `key`-then-`value`, so the same deny list that scrubs a context
+// object scrubs them here. Everything else in the message is left alone: it is
+// the operational detail the user-facing message deliberately withholds.
+//
+// Quoted values are matched on their own, not as part of a general
+// `key: value` pattern: a stack's first line is `Error: <the whole message>`,
+// so a pattern that let the non-sensitive `Error:` swallow the rest of the
+// line would scan straight past the `phone: "…"` inside it.
+const QUOTED_KEY_VALUE_PATTERN =
+  /([A-Za-z_][A-Za-z0-9_]*)\s*:\s*("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/g
+// Unquoted values only where the key opens a line, which is the shape of a
+// dumped argument object. Matching those inline would catch ordinary prose.
+const LINE_KEY_VALUE_PATTERN = /^([ \t]*)([A-Za-z_][A-Za-z0-9_]*)[ \t]*:[ \t]*([^\n,}]*)/gm
+const POSTGRES_KEY_PATTERN = /\bKey \(([^)]+)\)=\(([^)]*)\)/g
+
+/** Redacts the value of any `key: value` or `Key (key)=(value)` whose key is sensitive. */
+function scrubErrorText(text: string): string {
+  return text
+    .replace(POSTGRES_KEY_PATTERN, (match, key: string) =>
+      // The detail can name several columns; one sensitive column redacts the pair.
+      key.split(",").some((part) => isSensitiveKey(normaliseKey(part)))
+        ? `Key (${key})=(${REDACTED})`
+        : match
+    )
+    .replace(QUOTED_KEY_VALUE_PATTERN, (match, key: string) =>
+      isSensitiveKey(normaliseKey(key)) ? `${key}: "${REDACTED}"` : match
+    )
+    .replace(LINE_KEY_VALUE_PATTERN, (match, indent: string, key: string, value: string) => {
+      if (!isSensitiveKey(normaliseKey(key))) return match
+      // A quoted value was already handled above; leave its quotes intact.
+      if (value.startsWith('"') || value.startsWith("'")) return match
+      return `${indent}${key}: ${REDACTED}`
+    })
+}
+
 /**
  * Errors are logged by type and message — the operational detail the user-facing
- * message deliberately withholds. Nothing here is scrubbed: a driver message is
- * not personal data, and redacting it would defeat the point of logging it.
+ * message deliberately withholds — with any embedded personal data scrubbed out
+ * first. See `scrubErrorText` for which shapes that covers and why.
+ *
+ * Scrubbing runs before truncation so a cut cannot strand half of a value.
  */
 function serialiseError(error: unknown): SerialisedError {
   if (error instanceof Error) {
     const serialised: SerialisedError = {
       type: error.name,
-      message: truncate(error.message, MAX_STRING_LENGTH),
+      message: truncate(scrubErrorText(error.message), MAX_ERROR_MESSAGE_LENGTH),
     }
-    if (error.stack) serialised.stack = truncate(error.stack, MAX_STACK_LENGTH)
+    if (error.stack) {
+      serialised.stack = truncate(scrubErrorText(error.stack), MAX_STACK_LENGTH)
+    }
     return serialised
   }
-  return { type: typeof error, message: truncate(String(error), MAX_STRING_LENGTH) }
+  return {
+    type: typeof error,
+    message: truncate(scrubErrorText(String(error)), MAX_ERROR_MESSAGE_LENGTH),
+  }
 }
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {

@@ -156,6 +156,90 @@ describe("logger error serialisation", () => {
     expect(typeof serialised.stack).toBe("string")
   })
 
+  // Verified against Prisma 7: one wrong-typed field makes
+  // PrismaClientValidationError print the whole `data` object, so every other
+  // field on the foster-interest form lands in the message.
+  it("redacts personal data Prisma embeds in a validation error message", () => {
+    const error = new Error(
+      [
+        "Invalid `prisma.caseInterest.create()` invocation",
+        "           data: {",
+        '             caseId: "case_1",',
+        '             kind: "FOSTER",',
+        '             name: "Ada Lovelace",',
+        '             phone: "0400 000 000",',
+        '             note: "I have a fenced yard.",',
+        "             createdAt: 12345",
+        "           }",
+        "Argument `createdAt`: Invalid value provided. Expected DateTime, provided Int.",
+      ].join("\n")
+    )
+
+    logger.error("foster_interest.write_failed", { error })
+
+    const { message } = lastRecord().error as Record<string, string>
+    expect(message).not.toContain("Ada Lovelace")
+    expect(message).not.toContain("0400 000 000")
+    expect(message).not.toContain("fenced yard")
+    // The operational detail an operator needs survives.
+    expect(message).toContain("prisma.caseInterest.create()")
+    expect(message).toContain("Expected DateTime, provided Int")
+    expect(message).toContain('caseId: "case_1"')
+    expect(message).toContain('name: "[redacted]"')
+  })
+
+  it("redacts the value Postgres embeds in a constraint violation", () => {
+    logger.error("db_failed", {
+      error: new Error(
+        'duplicate key value violates unique constraint "case_interests_phone_key"\n' +
+          "Key (phone)=(0400 000 000) already exists."
+      ),
+    })
+
+    const { message } = lastRecord().error as Record<string, string>
+    expect(message).not.toContain("0400 000 000")
+    expect(message).toContain("Key (phone)=([redacted])")
+    expect(message).toContain("already exists")
+  })
+
+  it("leaves a constraint violation on a non-sensitive column alone", () => {
+    logger.error("db_failed", {
+      error: new Error("Key (slug)=(biscuit-2026) already exists."),
+    })
+
+    expect((lastRecord().error as Record<string, string>).message).toContain(
+      "Key (slug)=(biscuit-2026)"
+    )
+  })
+
+  it("scrubs the stack as well as the message", () => {
+    const error = new Error('failed with phone: "0400 000 000"')
+
+    logger.error("db_failed", { error })
+
+    const serialised = lastRecord().error as Record<string, string>
+    expect(serialised.stack).toBeDefined()
+    expect(serialised.stack).not.toContain("0400 000 000")
+  })
+
+  it("redacts an unquoted value in a dumped argument object", () => {
+    logger.error("db_failed", {
+      error: new Error("data: {\n  caseId: case_1,\n  phone: 0400000000\n}"),
+    })
+
+    const { message } = lastRecord().error as Record<string, string>
+    expect(message).not.toContain("0400000000")
+    expect(message).toContain("phone: [redacted]")
+    expect(message).toContain("caseId: case_1")
+  })
+
+  it("does not mangle a message with no sensitive keys", () => {
+    const message = "connect ECONNREFUSED 10.0.0.1:5432"
+    logger.error("db_failed", { error: new Error(message) })
+
+    expect((lastRecord().error as Record<string, string>).message).toBe(message)
+  })
+
   it("serialises a thrown non-Error", () => {
     logger.error("db_failed", { error: "just a string" })
 
