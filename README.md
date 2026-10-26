@@ -40,6 +40,7 @@ Fill in your Clerk API credentials and your Neon connection string:
 ```bash
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
 CLERK_SECRET_KEY=sk_test_...
+CLERK_WEBHOOK_SIGNING_SECRET=whsec_...
 
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
@@ -50,6 +51,37 @@ DATABASE_URL=postgresql://user:password@ep-...-pooler.us-east-2.aws.neon.tech/ph
 ```
 
 Create a Postgres project at [neon.com](https://neon.com), then copy the **pooled** connection string (the host contains `-pooler`) from the **Connect** dialog on the project dashboard into `DATABASE_URL`.
+
+### 1b. Clerk User Sync and Roles
+
+Clerk owns identity; the `users` table is a local mirror so cases, responses and
+contributions have a row to point at. Keeping the two in step needs a webhook:
+
+1. In the Clerk dashboard, go to **Webhooks → Add Endpoint**.
+2. Point it at `https://<your-host>/api/webhooks/clerk` and subscribe to
+   `user.created`, `user.updated` and `user.deleted`.
+3. Copy the endpoint's **Signing Secret** into `CLERK_WEBHOOK_SIGNING_SECRET`.
+
+The endpoint is public in `proxy.ts` because Clerk calls it without a session —
+the signature check is what authenticates it. Without the secret set, every
+delivery is rejected and the app falls back to a lazy upsert on the first
+authenticated request, so sign-in still works but role changes do not arrive.
+
+To grant someone a role, set `role` in their Clerk **public metadata** (Clerk
+dashboard → **Users** → a user → **Metadata** → *Public*):
+
+```json
+{ "role": "DISPATCHER" }
+```
+
+Valid values are `REPORTER` (the default), `VOLUNTEER`, `FOSTER`, `DISPATCHER`
+and `ADMIN`. The webhook mirrors that into `users.role`, which is the only thing
+authorization reads — `requireRole()` in `lib/auth.ts`. Public metadata is
+writable only from the dashboard and Backend API, never by the user themselves.
+
+For local development, forward the webhook to your dev server with the Clerk
+CLI or an ngrok tunnel; without one, the lazy upsert covers sign-in and you can
+set `users.role` directly with `npm run db:studio`.
 
 ### 2. Install Dependencies
 

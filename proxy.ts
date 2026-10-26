@@ -3,6 +3,9 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 const isPublicRoute = createRouteMatcher([
   "/sign-in(.*)",
   "/sign-up(.*)",
+  // Clerk calls this without a session; the route authenticates the request
+  // itself by verifying the webhook signature.
+  "/api/webhooks/clerk",
 ]);
 
 // Fail closed: every non-public route requires a session, even if Clerk keys
