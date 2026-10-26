@@ -43,7 +43,13 @@ export async function POST(request: NextRequest): Promise<Response> {
         // the rest so it is not retried forever.
         break
     }
-  } catch {
+  } catch (error) {
+    // Only a correctly signed delivery reaches here, so logging cannot be
+    // spammed from outside. Clerk's dashboard records the 500 but not its
+    // cause, and the response must not carry one — without this line a
+    // schema mismatch and a dropped connection look identical.
+    console.error("[clerk-webhook] failed to process", event.type, error)
+
     // A 5xx asks Clerk to retry, which is right for a transient database
     // failure — the alternative is a user row that silently never syncs.
     return new Response("Failed to process webhook", { status: 500 })

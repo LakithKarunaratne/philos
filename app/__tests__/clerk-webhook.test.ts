@@ -110,11 +110,32 @@ describe("POST /api/webhooks/clerk", () => {
 
   it("asks Clerk to retry when the write fails", async () => {
     // A 5xx is what keeps a transient outage from losing the sync silently.
+    const logged = jest.spyOn(console, "error").mockImplementation(() => {})
     mockSync.mockRejectedValue(new Error("connection terminated"))
     delivers({ type: "user.created", data: USER_PAYLOAD })
 
     const response = await POST(request())
 
     expect(response.status).toBe(500)
+    logged.mockRestore()
+  })
+
+  it("logs the cause server-side without putting it in the response", async () => {
+    // Clerk's dashboard records the 500 but not why, so a silent catch would
+    // make a schema mismatch indistinguishable from a dropped connection.
+    const logged = jest.spyOn(console, "error").mockImplementation(() => {})
+    const cause = new Error("column users.role does not exist")
+    mockSync.mockRejectedValue(cause)
+    delivers({ type: "user.created", data: USER_PAYLOAD })
+
+    const response = await POST(request())
+
+    expect(logged).toHaveBeenCalledWith(
+      "[clerk-webhook] failed to process",
+      "user.created",
+      cause
+    )
+    await expect(response.text()).resolves.not.toContain("users.role")
+    logged.mockRestore()
   })
 })
