@@ -139,9 +139,25 @@ This document defines the code review standards for the **Philos** Next.js 16 pr
 ## 5. Code Hygiene & React Standards
 
 ### No Console Logs
-- **Ban `console.log` / `console.debug` / `console.warn`** in committed code.
-- Use `debug` npm package or structured logging (Pino) if needed.
-- ESLint `no-console` rule should catch this — ensure it's enabled.
+- **Ban `console.*`** in committed code — use the logger in `lib/logger.ts`.
+  ```ts
+  import { logger } from "@/lib/logger";
+
+  logger.warn("alerts.mark_read.alert_missing", { alertId });
+  logger.error("foster_interest.write_failed", { caseSlug, error });
+  ```
+- `event` is a stable, greppable identifier, not a sentence; everything variable
+  goes in the context object.
+- **Never log personal data or secrets.** The logger redacts context keys that
+  name them (`name`, `phone`, `email`, `note`, `*token*`, `*password*`, …), but
+  that is a backstop — don't pass them in the first place.
+- The logger is server-only (`import "server-only"`). Client Components have no
+  logging facility; surface failures in the UI instead.
+- Levels are `debug | info | warn | error`; `LOG_LEVEL` sets the floor
+  (`silent` turns it off, which is what the test suite uses).
+- ESLint `no-console` is enabled repo-wide, with an override scoped to
+  `lib/logger.ts` in `eslint.config.mjs`. Don't widen that override — add a
+  level to the logger instead.
 
 ### Unique Keys
 - All `.map()` iterations **must** use stable unique IDs (`item.id`, not index).
@@ -282,7 +298,7 @@ When reviewing a PR, structure feedback as:
 - [ ] `npm run typecheck` (or `tsc --noEmit`) passes
 - [ ] `npm run test` passes
 - [ ] `npm run build` passes
-- [ ] No `console.log` in staged files
+- [ ] No `console.*` in staged files (use `lib/logger.ts`)
 - [ ] No `any` types introduced
 - [ ] All new components under 300 lines
 - [ ] All new `useEffect` have cleanup
@@ -318,4 +334,4 @@ npx prettier --write .
 
 ---
 
-*Last updated: 2026-09-19 — aligned with Next.js 16, React 19, Prisma 7, Tailwind 4*
+*Last updated: 2026-10-26 — aligned with Next.js 16, React 19, Prisma 7, Tailwind 4; §5 now points at `lib/logger.ts`*
