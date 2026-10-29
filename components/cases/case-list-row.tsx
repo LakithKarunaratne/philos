@@ -1,11 +1,11 @@
 import Link from "next/link"
 import { ChevronRightIcon, PawPrintIcon } from "lucide-react"
 import { StatusBadge } from "@/components/cases/status-badge"
-import type { RescueCase } from "@/lib/mock-data"
+import type { CaseSummary } from "@/lib/view-types"
 import { cn } from "cn"
 
 interface CaseListRowProps {
-  dog: RescueCase
+  dog: CaseSummary
   isLast?: boolean
   className?: string
 }

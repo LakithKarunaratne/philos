@@ -4,16 +4,14 @@ import { useEffect, useRef } from "react"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 import { STATUS_META } from "@/lib/constants"
-import type { CaseStatus, RescueCase } from "@/lib/mock-data"
+import { COLOMBO_CENTER, USER_ORIGIN } from "@/lib/geo"
+import type { CaseStatus, CaseSummary } from "@/lib/view-types"
 
 interface LeafletMapProps {
-  cases: RescueCase[]
+  cases: CaseSummary[]
   selectedId: string | null
   onSelectCase: (id: string) => void
 }
-
-const COLOMBO_CENTER: [number, number] = [6.915, 79.863]
-const USER_LOCATION: [number, number] = [6.911, 79.858]
 
 const SELECTED_Z_INDEX = 1000
 const DEFAULT_Z_INDEX = 100
@@ -115,7 +113,7 @@ export default function LeafletMap({
     }).addTo(map)
 
     // User location marker
-    L.marker(USER_LOCATION, {
+    L.marker(USER_ORIGIN, {
       icon: createUserLocationIcon(),
       interactive: false,
       zIndexOffset: 10,

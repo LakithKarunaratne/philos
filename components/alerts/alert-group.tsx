@@ -1,6 +1,6 @@
 import { AlertRow } from "@/components/alerts/alert-row"
 import { Card } from "@/components/ui/card"
-import type { AlertItem } from "@/lib/mock-data"
+import type { AlertItem } from "@/lib/view-types"
 
 interface AlertGroupProps {
   title: string

@@ -1,10 +1,9 @@
 import { MapPinIcon, ShieldAlertIcon } from "lucide-react"
 import { StatusBadge } from "@/components/cases/status-badge"
-import type { RescueCase } from "@/lib/mock-data"
+import type { RescueCase } from "@/lib/view-types"
 
-/** Placeholder values shown until every mock case has age / gender filled in. */
-const FALLBACK_AGE = "~2 yrs"
-const FALLBACK_GENDER = "Male"
+/** Shown when the case record has no age or gender recorded yet. */
+const UNKNOWN_FACT = "Unknown"
 
 interface CaseHeroProps {
   dog: RescueCase
@@ -53,8 +52,8 @@ export function CaseQuickInfo({ dog }: CaseHeroProps) {
       </div>
 
       <div className="mt-2 grid grid-cols-3 gap-2">
-        <QuickFact label="Age" value={dog.age || FALLBACK_AGE} />
-        <QuickFact label="Gender" value={dog.gender || FALLBACK_GENDER} />
+        <QuickFact label="Age" value={dog.age || UNKNOWN_FACT} />
+        <QuickFact label="Gender" value={dog.gender || UNKNOWN_FACT} />
         <QuickFact label="Status" value={dog.status} className="text-sm font-bold mt-0.5 capitalize" />
       </div>
     </div>

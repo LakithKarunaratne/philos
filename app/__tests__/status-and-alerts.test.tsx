@@ -3,8 +3,9 @@ import { AlertGroup } from "@/components/alerts/alert-group"
 import { StatusBadge } from "@/components/cases/status-badge"
 import { StatusLegend } from "@/components/map/status-legend"
 import { useStatusFilters } from "@/components/map/use-status-filters"
-import { CASE_STATUSES, DEMO_CASE_ID, FILTER_ALL, STATUS_META } from "@/lib/constants"
-import { INITIAL_ALERTS, STATUS_FILTERS, type AlertItem } from "@/lib/mock-data"
+import { ALERT_FIXTURE } from "@/lib/__fixtures__/view-fixtures"
+import { CASE_STATUSES, FILTER_ALL, STATUS_FILTERS, STATUS_META } from "@/lib/constants"
+import type { AlertItem } from "@/lib/view-types"
 
 describe("STATUS_META", () => {
   it("drives the badge classes and label", () => {
@@ -28,13 +29,14 @@ describe("AlertGroup", () => {
     expect(container).toBeEmptyDOMElement()
   })
 
-  it("falls back to the demo case link and reports opens", () => {
-    const alert: AlertItem = { ...INITIAL_ALERTS[0], link: undefined, caseId: undefined }
+  it("links to the destination the mapper resolved and reports opens", () => {
+    // `link` is always resolved server-side now, so rows carry no fallback.
+    const alert: AlertItem = { ...ALERT_FIXTURE, link: "/cases/bruno" }
     const onOpen = jest.fn()
     render(<AlertGroup title="Today" alerts={[alert]} onOpenAlert={onOpen} />)
 
     const link = screen.getByRole("link")
-    expect(link).toHaveAttribute("href", `/cases/${DEMO_CASE_ID}`)
+    expect(link).toHaveAttribute("href", "/cases/bruno")
     fireEvent.click(link)
     expect(onOpen).toHaveBeenCalledWith(alert.id)
   })

@@ -9,7 +9,7 @@ import { StatusFilterSheet } from "@/components/map/status-filter-sheet"
 import { StatusLegend } from "@/components/map/status-legend"
 import { useStatusFilters } from "@/components/map/use-status-filters"
 import { FILTER_ALL } from "@/lib/constants"
-import { NEARBY_CASES } from "@/lib/mock-data"
+import type { CaseSummary } from "@/lib/view-types"
 
 const LeafletMap = dynamic(() => import("@/components/map/leaflet-map"), {
   ssr: false,
@@ -23,7 +23,11 @@ const LeafletMap = dynamic(() => import("@/components/map/leaflet-map"), {
   ),
 })
 
-export function RescueMap() {
+interface RescueMapProps {
+  cases: CaseSummary[]
+}
+
+export function RescueMap({ cases }: RescueMapProps) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
@@ -31,7 +35,7 @@ export function RescueMap() {
   const { activeStatuses, toggleStatus, resetStatuses } = useStatusFilters()
 
   const visibleCases = useMemo(() => {
-    let result = NEARBY_CASES
+    let result = cases
 
     if (!activeStatuses.has(FILTER_ALL)) {
       result = result.filter((c) => activeStatuses.has(c.status))
@@ -48,7 +52,7 @@ export function RescueMap() {
     }
 
     return result
-  }, [activeStatuses, searchQuery])
+  }, [cases, activeStatuses, searchQuery])
 
   const selected = visibleCases.find((c) => c.id === selectedId) ?? null
 

@@ -1,8 +1,12 @@
 // Shared app-wide constants. Keep page-specific values colocated with their page.
 
-import type { CaseStatus } from "@/lib/mock-data"
+import type { CaseStatus } from "@/lib/view-types"
 
-/** Case opened when a mock flow has no real case to link to (prototype only). */
+/**
+ * Case the still-mocked report flow links to on success (PHI-5 replaces this
+ * once a report creates a real case). Data-backed screens resolve their own
+ * slugs and must not use it.
+ */
 export const DEMO_CASE_ID = "bruno"
 
 /** How long transient "Saved!" / "Sent!" style feedback stays visible. */
@@ -54,3 +58,9 @@ export const STATUS_META = {
 
 /** Statuses in display order (legend, filters). */
 export const CASE_STATUSES = Object.keys(STATUS_META) as CaseStatus[]
+
+/** Status filter options for the map sheet: "All" plus every status. */
+export const STATUS_FILTERS: { id: CaseStatus | typeof FILTER_ALL; label: string }[] = [
+  { id: FILTER_ALL, label: "All" },
+  ...CASE_STATUSES.map((id) => ({ id, label: STATUS_META[id].label })),
+]

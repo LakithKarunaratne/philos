@@ -3,11 +3,11 @@ import { XIcon } from "lucide-react"
 import { StatusBadge } from "@/components/cases/status-badge"
 import { Button, buttonVariants } from "@/components/ui/button"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import type { RescueCase } from "@/lib/mock-data"
+import type { CaseSummary } from "@/lib/view-types"
 import { cn } from "cn"
 
 interface SelectedCaseCardProps {
-  dog: RescueCase
+  dog: CaseSummary
   onClose: () => void
 }
 

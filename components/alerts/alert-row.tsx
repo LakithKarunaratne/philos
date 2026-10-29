@@ -1,8 +1,7 @@
 import Link from "next/link"
 import { ChevronRightIcon, ClockIcon } from "lucide-react"
 import { ALERT_CATEGORY_META } from "@/components/alerts/alert-category"
-import { DEMO_CASE_ID } from "@/lib/constants"
-import type { AlertItem } from "@/lib/mock-data"
+import type { AlertItem } from "@/lib/view-types"
 import { cn } from "cn"
 
 interface AlertRowProps {
@@ -16,7 +15,7 @@ export function AlertRow({ alert, isLast, onOpen }: AlertRowProps) {
 
   return (
     <Link
-      href={alert.link || `/cases/${alert.caseId || DEMO_CASE_ID}`}
+      href={alert.link}
       onClick={() => onOpen(alert.id)}
       className={cn(
         "flex items-start gap-3 p-3.5 text-inherit no-underline transition-colors hover:bg-muted/50",

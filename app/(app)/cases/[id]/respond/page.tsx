@@ -3,15 +3,18 @@ import { notFound } from "next/navigation"
 import { ArrowLeftIcon } from "lucide-react"
 import { RespondCaseBanner } from "@/components/cases/respond-case-banner"
 import { RespondForm } from "@/components/cases/respond-form"
-import { NEARBY_CASES } from "@/lib/mock-data"
+import { getCaseBySlug } from "@/lib/queries/cases"
 
 interface RespondPageProps {
   params: Promise<{ id: string }>
 }
 
+// The DB is not reachable at build time, so render per request.
+export const dynamic = "force-dynamic"
+
 export default async function RespondEmergencyPage({ params }: RespondPageProps) {
   const { id } = await params
-  const dog = NEARBY_CASES.find((c) => c.id === id)
+  const dog = await getCaseBySlug(id)
 
   if (!dog) {
     notFound()

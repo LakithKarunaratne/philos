@@ -4,15 +4,18 @@ import { CaseHealthCard, CaseNotesCard, CaseTemperamentCard } from "@/components
 import { CaseHero, CaseQuickInfo } from "@/components/cases/case-hero"
 import { CaseProfileHeader } from "@/components/cases/case-profile-header"
 import { CaseTimeline } from "@/components/cases/case-timeline"
-import { NEARBY_CASES } from "@/lib/mock-data"
+import { getCaseBySlug } from "@/lib/queries/cases"
 
 interface CasePageProps {
   params: Promise<{ id: string }>
 }
 
+// The DB is not reachable at build time, so render per request.
+export const dynamic = "force-dynamic"
+
 export default async function CaseProfilePage({ params }: CasePageProps) {
   const { id } = await params
-  const dog = NEARBY_CASES.find((c) => c.id === id)
+  const dog = await getCaseBySlug(id)
 
   if (!dog) {
     notFound()
@@ -31,7 +34,7 @@ export default async function CaseProfilePage({ params }: CasePageProps) {
         <CaseHealthCard notes={dog.healthNotes} />
       </main>
 
-      <CaseActionBar caseId={dog.id} caseName={dog.name} />
+      <CaseActionBar caseSlug={dog.id} caseName={dog.name} />
     </>
   )
 }

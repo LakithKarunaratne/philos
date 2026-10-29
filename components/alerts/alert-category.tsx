@@ -1,5 +1,5 @@
 import { HeartHandshakeIcon, PawPrintIcon, ShieldAlertIcon, type LucideIcon } from "lucide-react"
-import type { AlertCategory } from "@/lib/mock-data"
+import type { AlertCategory } from "@/lib/view-types"
 
 /** Label (filter chip) and icon styling for each alert category. */
 export const ALERT_CATEGORY_META: Record<
