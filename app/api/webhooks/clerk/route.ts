@@ -12,6 +12,7 @@
 
 import type { NextRequest } from "next/server"
 import { verifyWebhook } from "@clerk/nextjs/webhooks"
+import { logger } from "@/lib/logger"
 import { softDeleteClerkUser, syncClerkUser } from "@/lib/user-sync"
 
 export async function POST(request: NextRequest): Promise<Response> {
@@ -48,7 +49,10 @@ export async function POST(request: NextRequest): Promise<Response> {
     // spammed from outside. Clerk's dashboard records the 500 but not its
     // cause, and the response must not carry one — without this line a
     // schema mismatch and a dropped connection look identical.
-    console.error("[clerk-webhook] failed to process", event.type, error)
+    //
+    // The Clerk id is the one identifier worth reading back; the user's name,
+    // email and phone stay out of the line (lib/logger.ts scrubs them anyway).
+    logger.error("clerk_webhook.process_failed", { eventType: event.type, error })
 
     // A 5xx asks Clerk to retry, which is right for a transient database
     // failure — the alternative is a user row that silently never syncs.

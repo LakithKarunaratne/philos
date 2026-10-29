@@ -18,6 +18,7 @@ import {
 } from "@/app/(app)/cases/[id]/status-options"
 import { CaseStatus, InterestKind } from "@/generated/prisma/enums"
 import { AuthorizationError, ensureCurrentDbUser, requireRole } from "@/lib/auth"
+import { logger } from "@/lib/logger"
 import { prisma } from "@/lib/prisma"
 import {
   collectErrors,
@@ -95,7 +96,11 @@ export async function submitFosterInterest(
   let userId: string | null = null
   try {
     userId = (await ensureCurrentDbUser())?.id ?? null
-  } catch {
+  } catch (error) {
+    // Logged rather than swallowed: the interest is still recorded, but a run
+    // of these means attribution is silently broken and PHI-13's sync is down.
+    // The submitter's name and phone stay out of the line — see lib/logger.ts.
+    logger.warn("foster_interest.attribution_failed", { caseSlug, error })
     userId = null
   }
 
@@ -110,8 +115,10 @@ export async function submitFosterInterest(
         note: values.note || null,
       },
     })
-  } catch {
+  } catch (error) {
     // Never surface the driver's message — it can carry connection details.
+    // The operator gets it in the log instead; the user keeps the generic copy.
+    logger.error("foster_interest.write_failed", { caseSlug, caseId: rescueCase.id, error })
     return {
       status: "error",
       message: "We could not save that just now. Please try again.",
@@ -199,8 +206,10 @@ export async function updateCaseStatus(
         },
       }),
     ])
-  } catch {
+  } catch (error) {
     // Never surface the driver's message — it can carry connection details.
+    // The operator gets it in the log instead; the user keeps the generic copy.
+    logger.error("case_status.write_failed", { caseSlug, caseId: rescueCase.id, next, error })
     return { status: "error", message: "We could not save that just now. Please try again." }
   }
 

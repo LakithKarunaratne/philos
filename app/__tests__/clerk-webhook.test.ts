@@ -6,15 +6,22 @@
  */
 import { verifyWebhook } from "@clerk/nextjs/webhooks"
 import { POST } from "@/app/api/webhooks/clerk/route"
+import { logger } from "@/lib/logger"
 import { softDeleteClerkUser, syncClerkUser } from "@/lib/user-sync"
 
 jest.mock("@clerk/nextjs/webhooks", () => ({ verifyWebhook: jest.fn() }))
+// Mocked rather than silenced, so the assertions read the call directly and do
+// not depend on LOG_LEVEL (jest.setup.js sets it to "silent").
+jest.mock("@/lib/logger", () => ({
+  logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn() },
+}))
 jest.mock("@/lib/user-sync", () => ({
   syncClerkUser: jest.fn(),
   softDeleteClerkUser: jest.fn(),
 }))
 
 const mockVerify = jest.mocked(verifyWebhook)
+const mockLogError = jest.mocked(logger.error)
 const mockSync = jest.mocked(syncClerkUser)
 const mockSoftDelete = jest.mocked(softDeleteClerkUser)
 
@@ -110,32 +117,36 @@ describe("POST /api/webhooks/clerk", () => {
 
   it("asks Clerk to retry when the write fails", async () => {
     // A 5xx is what keeps a transient outage from losing the sync silently.
-    const logged = jest.spyOn(console, "error").mockImplementation(() => {})
     mockSync.mockRejectedValue(new Error("connection terminated"))
     delivers({ type: "user.created", data: USER_PAYLOAD })
 
     const response = await POST(request())
 
     expect(response.status).toBe(500)
-    logged.mockRestore()
   })
 
   it("logs the cause server-side without putting it in the response", async () => {
     // Clerk's dashboard records the 500 but not why, so a silent catch would
     // make a schema mismatch indistinguishable from a dropped connection.
-    const logged = jest.spyOn(console, "error").mockImplementation(() => {})
     const cause = new Error("column users.role does not exist")
     mockSync.mockRejectedValue(cause)
     delivers({ type: "user.created", data: USER_PAYLOAD })
 
     const response = await POST(request())
 
-    expect(logged).toHaveBeenCalledWith(
-      "[clerk-webhook] failed to process",
-      "user.created",
-      cause
-    )
+    expect(mockLogError).toHaveBeenCalledWith("clerk_webhook.process_failed", {
+      eventType: "user.created",
+      error: cause,
+    })
     await expect(response.text()).resolves.not.toContain("users.role")
-    logged.mockRestore()
+  })
+
+  it("logs nothing for a delivery it could not verify", async () => {
+    // That path is reachable by anyone, so logging it would be spammable.
+    mockVerify.mockRejectedValue(new Error("No matching signature found"))
+
+    await POST(request())
+
+    expect(mockLogError).not.toHaveBeenCalled()
   })
 })
