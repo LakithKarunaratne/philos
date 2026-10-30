@@ -1,9 +1,12 @@
 import { notFound } from "next/navigation"
+import { CASE_STATUS_ROLES } from "@/app/(app)/cases/[id]/status-options"
 import { CaseActionBar } from "@/components/cases/case-action-bar"
 import { CaseHealthCard, CaseNotesCard, CaseTemperamentCard } from "@/components/cases/case-detail-cards"
 import { CaseHero, CaseQuickInfo } from "@/components/cases/case-hero"
 import { CaseProfileHeader } from "@/components/cases/case-profile-header"
+import { CaseStatusControl } from "@/components/cases/case-status-control"
 import { CaseTimeline } from "@/components/cases/case-timeline"
+import { hasRole } from "@/lib/auth"
 import { getCaseBySlug } from "@/lib/queries/cases"
 
 interface CasePageProps {
@@ -21,6 +24,10 @@ export default async function CaseProfilePage({ params }: CasePageProps) {
     notFound()
   }
 
+  // Hides a control the user could not use anyway. The action behind it does
+  // the real check, so this is presentation, not access control.
+  const canDispatch = await hasRole(...CASE_STATUS_ROLES)
+
   return (
     <>
       <CaseProfileHeader caseName={dog.name} />
@@ -32,6 +39,13 @@ export default async function CaseProfilePage({ params }: CasePageProps) {
         <CaseTimeline steps={dog.timelineSteps} />
         <CaseTemperamentCard traits={dog.temperament} />
         <CaseHealthCard notes={dog.healthNotes} />
+        {canDispatch ? (
+          <CaseStatusControl
+            caseSlug={dog.id}
+            caseName={dog.name}
+            currentStatus={dog.status}
+          />
+        ) : null}
       </main>
 
       <CaseActionBar caseSlug={dog.id} caseName={dog.name} />

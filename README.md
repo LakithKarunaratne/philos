@@ -40,6 +40,7 @@ Fill in your Clerk API credentials and your Neon connection string:
 ```bash
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_test_...
 CLERK_SECRET_KEY=sk_test_...
+CLERK_WEBHOOK_SIGNING_SECRET=whsec_...
 
 NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
 NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
@@ -50,6 +51,74 @@ DATABASE_URL=postgresql://user:password@ep-...-pooler.us-east-2.aws.neon.tech/ph
 ```
 
 Create a Postgres project at [neon.com](https://neon.com), then copy the **pooled** connection string (the host contains `-pooler`) from the **Connect** dialog on the project dashboard into `DATABASE_URL`.
+
+### 1b. Clerk User Sync and Roles
+
+Clerk owns identity; the `users` table is a local mirror so cases, responses and
+contributions have a row to point at. A webhook keeps the two in step, and
+carries the role an operator grants:
+
+```
+Clerk dashboard  →  webhook  →  users.role  →  requireRole() in server actions
+ (public metadata)
+```
+
+#### Create the endpoint
+
+1. In the Clerk dashboard, go to **Webhooks → Add Endpoint**.
+2. Point it at `https://<your-host>/api/webhooks/clerk` and subscribe to
+   `user.created`, `user.updated` and `user.deleted`.
+3. Copy the endpoint's **Signing Secret** into `CLERK_WEBHOOK_SIGNING_SECRET`.
+
+The secret is per endpoint, and Clerk's development and production instances are
+separate — so each environment needs its own endpoint and its own secret.
+
+The endpoint is public in `proxy.ts` because Clerk calls it without a session —
+the signature check is what authenticates it. Without the secret set, every
+delivery is rejected and the app falls back to a lazy upsert on the first
+authenticated request, so sign-in still works but role changes do not arrive.
+
+#### Check it works
+
+The endpoint's **Testing** tab sends a real signed delivery: pick `user.created`
+and click **Send Example**, and the handler should answer `204`.
+
+Note that the sample payload carries a made-up user id, so a successful test
+leaves a junk row in `users`. Clear it with `npm run db:studio`.
+
+#### Grant a role
+
+Set `role` in the user's Clerk **public metadata** (dashboard → **Users** → a
+user → **Metadata** → *Public*):
+
+```json
+{ "role": "DISPATCHER" }
+```
+
+Valid values are `REPORTER` (the default), `VOLUNTEER`, `FOSTER`, `DISPATCHER`
+and `ADMIN`. Saving fires `user.updated`, so the role reaches `users.role` in a
+second or two — reload a case page and the dispatcher controls appear.
+
+Use *public* metadata, not `unsafeMetadata`: the latter is writable by the user
+themselves, which would let anyone promote their own account. An unrecognised
+value (a typo like `DISPATHCER`) is ignored rather than guessed at, so the user
+keeps the role they had — if a grant seems not to take, check `users.role`.
+
+#### Local development
+
+Clerk cannot reach `localhost`, so deliveries need a tunnel:
+
+```bash
+clerk webhooks listen --forward-to http://localhost:3000/api/webhooks/clerk
+```
+
+`--token` pins the URL across restarts. ngrok, Cloudflare Tunnel and
+`svix listen` work too; with those, update the endpoint URL in the dashboard
+whenever the tunnel URL changes.
+
+The tunnel is only needed to test role propagation. Without one, sign-in still
+works — the lazy upsert creates the row on the first authenticated request — and
+you can set `users.role` by hand with `npm run db:studio`.
 
 ### 2. Install Dependencies
 
